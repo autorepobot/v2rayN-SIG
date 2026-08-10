@@ -49,7 +49,7 @@ jobs:
     - name: Ensure script permissions
       run: chmod 755 package-debian.sh
     - name: Package DEB (Debian-family)
-      run: ./package-debian.sh "${RELEASE_TAG}" --arch all --netcore --with-core sing-box
+      run: ./package-debian.sh "${RELEASE_TAG}" --arch all
     - name: Collect DEBs into workspace
       run: |
         mkdir -p "$GITHUB_WORKSPACE/dist/deb"
@@ -108,7 +108,7 @@ jobs:
     - name: Ensure script permissions
       run: chmod 755 package-rhel.sh
     - name: Package RPM (RHEL-family)
-      run: ./package-rhel.sh "${RELEASE_TAG}" --arch all --netcore --with-core sing-box
+      run: ./package-rhel.sh "${RELEASE_TAG}" --arch all
     - name: Collect RPMs into workspace
       run: |
         mkdir -p "$GITHUB_WORKSPACE/dist/rpm"
@@ -149,7 +149,7 @@ jobs:
     - name: Ensure script permissions
       run: chmod 755 package-rhel-riscv.sh
     - name: Package RPM (RHEL-family)
-      run: ./package-rhel-riscv.sh "${RELEASE_TAG}" --netcore --with-core sing-box
+      run: ./package-rhel-riscv.sh "${RELEASE_TAG}"
     - name: Collect RPMs into workspace
       run: |
         mkdir -p "$GITHUB_WORKSPACE/dist/rpm-riscv64"
@@ -190,7 +190,7 @@ jobs:
     - name: Ensure script permissions
       run: chmod 755 package-debian-riscv.sh
     - name: Package DEB (Debian-family)
-      run: ./package-debian-riscv.sh "${RELEASE_TAG}" --netcore --with-core sing-box
+      run: ./package-debian-riscv.sh "${RELEASE_TAG}"
     - name: Collect DEBs into workspace
       run: |
         mkdir -p "$GITHUB_WORKSPACE/dist/deb-riscv64"
@@ -334,7 +334,7 @@ jobs:
         run_cmd "rsync -a --info=progress2 /workspace/repo/ /root/v2rayN-src/"
         run_cmd "cd /root/v2rayN-src && git config --global --add safe.directory /root/v2rayN-src"
         run_cmd "cd /root/v2rayN-src && chmod 755 package-debian-loong.sh"
-        send -- "cd /root/v2rayN-src; cat >/tmp/run-loong-build.sh <<'SCRIPT'\nset +e\nset -o pipefail\nbash -x ./package-debian-loong.sh \"\$RELEASE_TAG\" --netcore --with-core sing-box 2>&1 | tee /tmp/build.log\nrc=\$?\nmkdir -p /workspace/dist/deb-loong64\ncp -av /root/debbuild/*.deb /workspace/dist/deb-loong64/ 2>/dev/null || true\necho __BUILD_DONE__\$rc\nSCRIPT\nRELEASE_TAG=\"$release_tag\" bash /tmp/run-loong-build.sh\r"
+        send -- "cd /root/v2rayN-src; cat >/tmp/run-loong-build.sh <<'SCRIPT'\nset +e\nset -o pipefail\nbash -x ./package-debian-loong.sh \"\$RELEASE_TAG\" 2>&1 | tee /tmp/build.log\nrc=\$?\nmkdir -p /workspace/dist/deb-loong64\ncp -av /root/debbuild/*.deb /workspace/dist/deb-loong64/ 2>/dev/null || true\necho __BUILD_DONE__\$rc\nSCRIPT\nRELEASE_TAG=\"$release_tag\" bash /tmp/run-loong-build.sh\r"
         expect {
           -re "__BUILD_DONE__0" { send -- "poweroff\r" }
           default { exit 1 }
@@ -484,7 +484,7 @@ jobs:
         run_cmd "rsync -a --info=progress2 /workspace/repo/ /root/v2rayN-src/"
         run_cmd "cd /root/v2rayN-src && git config --global --add safe.directory /root/v2rayN-src"
         run_cmd "cd /root/v2rayN-src && chmod 755 package-rhel-loong.sh"
-        send -- "cd /root/v2rayN-src; cat >/tmp/run-loong-rpm-build.sh <<'SCRIPT'\nset +e\nset -o pipefail\nbash -x ./package-rhel-loong.sh \"\$RELEASE_TAG\" --netcore --with-core sing-box 2>&1 | tee /tmp/build.log\nrc=\$?\nmkdir -p /workspace/dist/rpm-loong64\nfind /root/rpmbuild/RPMS -name '*.rpm' -exec cp -av {} /workspace/dist/rpm-loong64/ \\; 2>/dev/null || true\necho __BUILD_DONE__\$rc\nSCRIPT\nRELEASE_TAG=\"$release_tag\" bash /tmp/run-loong-rpm-build.sh\r"
+        send -- "cd /root/v2rayN-src; cat >/tmp/run-loong-rpm-build.sh <<'SCRIPT'\nset +e\nset -o pipefail\nbash -x ./package-rhel-loong.sh \"\$RELEASE_TAG\" 2>&1 | tee /tmp/build.log\nrc=\$?\nmkdir -p /workspace/dist/rpm-loong64\nfind /root/rpmbuild/RPMS -name '*.rpm' -exec cp -av {} /workspace/dist/rpm-loong64/ \\; 2>/dev/null || true\necho __BUILD_DONE__\$rc\nSCRIPT\nRELEASE_TAG=\"$release_tag\" bash /tmp/run-loong-rpm-build.sh\r"
         expect {
           -re "__BUILD_DONE__0" { send -- "poweroff\r" }
           default { exit 1 }
