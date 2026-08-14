@@ -1,102 +1,86 @@
-diff --git a/.gitignore b/.gitignore
-index dcf4c23965a..d0d8fe2b816 100644
---- a/.gitignore
-+++ b/.gitignore
-@@ -402,6 +402,3 @@ FodyWeavers.xsd
+--- b/.gitignore
++++ a/.gitignore
+@@ -402,6 +402,3 @@
  # JetBrains Rider
  .idea/
  *.sln.iml
 -
 -# Local packaging/test artifacts
 -dist/
-diff --git a/package-debian-loong.sh b/package-debian-loong.sh
-index 1023faf1403..b8b65332ffb 100644
---- a/package-debian-loong.sh
-+++ b/package-debian-loong.sh
-@@ -597,7 +597,7 @@ package_binary() {
+--- b/package-debian-loong.sh
++++ a/package-debian-loong.sh
+@@ -597,7 +597,7 @@
    write_desktop_file "$stage"
    write_maintainer_scripts "$debian_dir"
  
--  extra_depends="libc6 (>= 2.39), fontconfig (>= 2.15.0), desktop-file-utils (>= 0.26), xdg-utils (>= 1.1.3), coreutils (>= 9.4), bash (>= 5.2.21), libfreetype6 (>= 2.13), libwayland-client0, libwayland-cursor0, libwayland-egl1, libxkbcommon0, libegl1, libgbm1, libdrm2, libglib2.0-0"
 +  extra_depends="libc6 (>= 2.39), fontconfig (>= 2.15.0), desktop-file-utils (>= 0.26), xdg-utils (>= 1.1.3), coreutils (>= 9.4), bash (>= 5.2.21), libfreetype6 (>= 2.13)"
+-  extra_depends="libc6 (>= 2.39), fontconfig (>= 2.15.0), desktop-file-utils (>= 0.26), xdg-utils (>= 1.1.3), coreutils (>= 9.4), bash (>= 5.2.21), libfreetype6 (>= 2.13), libwayland-client0, libwayland-cursor0, libwayland-egl1, libxkbcommon0, libegl1, libgbm1, libdrm2, libglib2.0-0"
    
    mkdir -p "$workdir/debian"
    cat > "$workdir/debian/control" <<EOF
-diff --git a/package-debian-riscv.sh b/package-debian-riscv.sh
-index db94f8cf471..e6ecb1aab51 100644
---- a/package-debian-riscv.sh
-+++ b/package-debian-riscv.sh
-@@ -595,7 +595,7 @@ package_binary() {
+--- b/package-debian-riscv.sh
++++ a/package-debian-riscv.sh
+@@ -595,7 +595,7 @@
    write_desktop_file "$stage"
    write_maintainer_scripts "$debian_dir"
  
--  extra_depends="libc6 (>= 2.39), fontconfig (>= 2.15.0), desktop-file-utils (>= 0.26), xdg-utils (>= 1.1.3), coreutils (>= 9.4), bash (>= 5.2.21), libfreetype6 (>= 2.13), libwayland-client0, libwayland-cursor0, libwayland-egl1, libxkbcommon0, libegl1, libgbm1, libdrm2, libglib2.0-0"
 +  extra_depends="libc6 (>= 2.39), fontconfig (>= 2.15.0), desktop-file-utils (>= 0.26), xdg-utils (>= 1.1.3), coreutils (>= 9.4), bash (>= 5.2.21), libfreetype6 (>= 2.13)"
+-  extra_depends="libc6 (>= 2.39), fontconfig (>= 2.15.0), desktop-file-utils (>= 0.26), xdg-utils (>= 1.1.3), coreutils (>= 9.4), bash (>= 5.2.21), libfreetype6 (>= 2.13), libwayland-client0, libwayland-cursor0, libwayland-egl1, libxkbcommon0, libegl1, libgbm1, libdrm2, libglib2.0-0"
    
    mkdir -p "$workdir/debian"
    cat > "$workdir/debian/control" <<EOF
-diff --git a/package-debian.sh b/package-debian.sh
-index de4fed6c3c5..0d459e84243 100644
---- a/package-debian.sh
-+++ b/package-debian.sh
-@@ -609,7 +609,7 @@ package_binary() {
+--- b/package-debian.sh
++++ a/package-debian.sh
+@@ -609,7 +609,7 @@
    write_desktop_file "$stage"
    write_maintainer_scripts "$debian_dir"
  
--  extra_depends="libc6 (>= 2.39), fontconfig (>= 2.15.0), desktop-file-utils (>= 0.26), xdg-utils (>= 1.1.3), coreutils (>= 9.4), bash (>= 5.2.21), libfreetype6 (>= 2.13), libwayland-client0, libwayland-cursor0, libwayland-egl1, libxkbcommon0, libegl1, libgbm1, libdrm2, libglib2.0-0"
 +  extra_depends="libc6 (>= 2.39), fontconfig (>= 2.15.0), desktop-file-utils (>= 0.26), xdg-utils (>= 1.1.3), coreutils (>= 9.4), bash (>= 5.2.21), libfreetype6 (>= 2.13)"
+-  extra_depends="libc6 (>= 2.39), fontconfig (>= 2.15.0), desktop-file-utils (>= 0.26), xdg-utils (>= 1.1.3), coreutils (>= 9.4), bash (>= 5.2.21), libfreetype6 (>= 2.13), libwayland-client0, libwayland-cursor0, libwayland-egl1, libxkbcommon0, libegl1, libgbm1, libdrm2, libglib2.0-0"
  
    mkdir -p "$workdir/debian"
    cat > "$workdir/debian/control" <<EOF
-diff --git a/package-rhel-loong.sh b/package-rhel-loong.sh
-index 0e9c9b63e34..fb6171fa7d3 100644
---- a/package-rhel-loong.sh
-+++ b/package-rhel-loong.sh
-@@ -509,9 +509,7 @@ BugURL:         https://github.com/2dust/v2rayN/issues
+--- b/package-rhel-loong.sh
++++ a/package-rhel-loong.sh
+@@ -509,9 +509,7 @@
  ExclusiveArch:  loongarch64
  Source0:        __PKGROOT__.tar.gz
  
++Requires:       cairo, pango, openssl, mesa-libEGL, mesa-libGL
 -Requires:       cairo, pango, openssl, mesa-libEGL, mesa-libGL, mesa-libgbm
 -Requires:       libwayland-client, libwayland-cursor, libwayland-egl
 -Requires:       libxkbcommon, libdrm, glib2
-+Requires:       cairo, pango, openssl, mesa-libEGL, mesa-libGL
  Requires:       glibc >= 2.39
  Requires:       fontconfig >= 2.15.0
  Requires:       desktop-file-utils >= 0.26
-diff --git a/package-rhel-riscv.sh b/package-rhel-riscv.sh
-index 185c858311b..24ead13bb32 100644
---- a/package-rhel-riscv.sh
-+++ b/package-rhel-riscv.sh
-@@ -508,9 +508,7 @@ BugURL:         https://github.com/2dust/v2rayN/issues
+--- b/package-rhel-riscv.sh
++++ a/package-rhel-riscv.sh
+@@ -508,9 +508,7 @@
  ExclusiveArch:  riscv64
  Source0:        __PKGROOT__.tar.gz
  
++Requires:       cairo, pango, openssl, mesa-libEGL, mesa-libGL
 -Requires:       cairo, pango, openssl, mesa-libEGL, mesa-libGL, mesa-libgbm
 -Requires:       libwayland-client, libwayland-cursor, libwayland-egl
 -Requires:       libxkbcommon, libdrm, glib2
-+Requires:       cairo, pango, openssl, mesa-libEGL, mesa-libGL
  Requires:       glibc >= 2.39
  Requires:       fontconfig >= 2.15.0
  Requires:       desktop-file-utils >= 0.26
-diff --git a/package-rhel.sh b/package-rhel.sh
-index 9f8f589ed84..a01f9fa251d 100644
---- a/package-rhel.sh
-+++ b/package-rhel.sh
-@@ -497,9 +497,7 @@ BugURL:         https://github.com/2dust/v2rayN/issues
+--- b/package-rhel.sh
++++ a/package-rhel.sh
+@@ -497,9 +497,7 @@
  ExclusiveArch:  aarch64 x86_64
  Source0:        __PKGROOT__.tar.gz
  
++Requires:       cairo, pango, openssl, mesa-libEGL, mesa-libGL
 -Requires:       cairo, pango, openssl, mesa-libEGL, mesa-libGL, mesa-libgbm
 -Requires:       libwayland-client, libwayland-cursor, libwayland-egl
 -Requires:       libxkbcommon, libdrm, glib2
-+Requires:       cairo, pango, openssl, mesa-libEGL, mesa-libGL
  Requires:       glibc >= 2.39
  Requires:       fontconfig >= 2.15.0
  Requires:       desktop-file-utils >= 0.26
-diff --git a/v2rayN/Directory.Packages.props b/v2rayN/Directory.Packages.props
-index ec31e8efcb7..ae214b2e5aa 100644
---- a/v2rayN/Directory.Packages.props
-+++ b/v2rayN/Directory.Packages.props
+--- b/v2rayN/Directory.Packages.props
++++ a/v2rayN/Directory.Packages.props
 @@ -8,7 +8,6 @@
      <PackageVersion Include="Avalonia.AvaloniaEdit" Version="12.0.0" />
      <PackageVersion Include="Avalonia.Controls.DataGrid" Version="12.1.2" />
@@ -105,11 +89,9 @@ index ec31e8efcb7..ae214b2e5aa 100644
      <PackageVersion Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3" />
      <PackageVersion Include="AwesomeAssertions" Version="9.5.0" />
      <PackageVersion Include="DialogHost.Avalonia" Version="0.12.3" />
-diff --git a/v2rayN/ServiceLib/Models/Configs/ConfigItems.cs b/v2rayN/ServiceLib/Models/Configs/ConfigItems.cs
-index 84f965afdad..4fbdbb0bfe4 100644
---- a/v2rayN/ServiceLib/Models/Configs/ConfigItems.cs
-+++ b/v2rayN/ServiceLib/Models/Configs/ConfigItems.cs
-@@ -101,7 +101,6 @@ public class UIItem
+--- b/v2rayN/ServiceLib/Models/Configs/ConfigItems.cs
++++ a/v2rayN/ServiceLib/Models/Configs/ConfigItems.cs
+@@ -101,7 +101,6 @@
      public bool AutoHideStartup { get; set; }
      public bool Hide2TrayWhenClose { get; set; }
      public bool MacOSShowInDock { get; set; }
@@ -117,11 +99,9 @@ index 84f965afdad..4fbdbb0bfe4 100644
      public List<ColumnItem> MainColumnItem { get; set; }
      public List<WindowSizeItem> WindowSizeItem { get; set; }
      public bool HideColumnIpInfo { get; set; }
-diff --git a/v2rayN/ServiceLib/Resx/ResUI.Designer.cs b/v2rayN/ServiceLib/Resx/ResUI.Designer.cs
-index d5d12f2c643..ea26590f606 100644
---- a/v2rayN/ServiceLib/Resx/ResUI.Designer.cs
-+++ b/v2rayN/ServiceLib/Resx/ResUI.Designer.cs
-@@ -4220,18 +4220,6 @@ public static string TbSettingsEnableDragDropSort {
+--- b/v2rayN/ServiceLib/Resx/ResUI.Designer.cs
++++ a/v2rayN/ServiceLib/Resx/ResUI.Designer.cs
+@@ -4220,18 +4220,6 @@
                  return ResourceManager.GetString("TbSettingsEnableDragDropSort", resourceCulture);
              }
          }
@@ -140,141 +120,171 @@ index d5d12f2c643..ea26590f606 100644
          
          /// <summary>
          ///   查找类似 Enable fragment 的本地化字符串。
-diff --git a/v2rayN/ServiceLib/Resx/ResUI.fa.resx b/v2rayN/ServiceLib/Resx/ResUI.fa.resx
-index d64656fc924..7bdc75b407a 100644
---- a/v2rayN/ServiceLib/Resx/ResUI.fa.resx
-+++ b/v2rayN/ServiceLib/Resx/ResUI.fa.resx
-@@ -909,6 +909,0 @@
+--- b/v2rayN/ServiceLib/Resx/ResUI.fa.resx
++++ a/v2rayN/ServiceLib/Resx/ResUI.fa.resx
+@@ -909,12 +909,6 @@
+   <data name="TbSettingsEnableDragDropSort" xml:space="preserve">
+     <value>فعال کردن مرتب‌سازی سرورها با کشیدن و رها کردن (نیاز به راه‌اندازی مجدد)</value>
+   </data>
 -  <data name="TbSettingsEnableLinuxWayland" xml:space="preserve">
 -    <value>فعال‌سازی بک‌اند بومی Wayland [آزمایشی] (نیاز به راه‌اندازی مجدد)</value>
 -  </data>
 -  <data name="TbSettingsEnableLinuxWaylandTip" xml:space="preserve">
 -    <value>فقط برای لینوکس. اگر تم نشانگر، سینی یا رفتار پنجره غیرعادی بود، این گزینه را غیرفعال کنید.</value>
 -  </data>
-@@ -1776,4 +1770,4 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
+   <data name="TbAutoRefresh" xml:space="preserve">
+     <value>بازخوانی خودکار</value>
+   </data>
+@@ -1776,4 +1770,4 @@
    <data name="menuNewUpdate" xml:space="preserve">
      <value>New Update</value>
    </data>
--</root>
-+\ No newline at end of file
 +</root>
-diff --git a/v2rayN/ServiceLib/Resx/ResUI.fr.resx b/v2rayN/ServiceLib/Resx/ResUI.fr.resx
-index 33ae3b4ebd2..9688fbd4d0a 100644
---- a/v2rayN/ServiceLib/Resx/ResUI.fr.resx
-+++ b/v2rayN/ServiceLib/Resx/ResUI.fr.resx
-@@ -909,6 +909,0 @@
+\ No newline at end of file
+-</root>
+--- b/v2rayN/ServiceLib/Resx/ResUI.fr.resx
++++ a/v2rayN/ServiceLib/Resx/ResUI.fr.resx
+@@ -909,12 +909,6 @@
+   <data name="TbSettingsEnableDragDropSort" xml:space="preserve">
+     <value>Activer le tri par glisser-déposer des configurations (redémarrage requis)</value>
+   </data>
 -  <data name="TbSettingsEnableLinuxWayland" xml:space="preserve">
 -    <value>Activer le backend Wayland natif [expérimental] (redémarrage requis)</value>
 -  </data>
 -  <data name="TbSettingsEnableLinuxWaylandTip" xml:space="preserve">
 -    <value>Linux uniquement. Si le thème du curseur, la zone de notification ou le comportement des fenêtres est anormal, désactivez cette option.</value>
 -  </data>
-@@ -1773,4 +1767,4 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
+   <data name="TbAutoRefresh" xml:space="preserve">
+     <value>Actualisation automatique</value>
+   </data>
+@@ -1773,4 +1767,4 @@
    <data name="menuNewUpdate" xml:space="preserve">
      <value>Nouvelle MAJ</value>
    </data>
--</root>
-+\ No newline at end of file
 +</root>
-diff --git a/v2rayN/ServiceLib/Resx/ResUI.hu.resx b/v2rayN/ServiceLib/Resx/ResUI.hu.resx
-index 0d3247f1428..3adc061f5f2 100644
---- a/v2rayN/ServiceLib/Resx/ResUI.hu.resx
-+++ b/v2rayN/ServiceLib/Resx/ResUI.hu.resx
-@@ -909,6 +909,0 @@
+\ No newline at end of file
+-</root>
+--- b/v2rayN/ServiceLib/Resx/ResUI.hu.resx
++++ a/v2rayN/ServiceLib/Resx/ResUI.hu.resx
+@@ -909,12 +909,6 @@
+   <data name="TbSettingsEnableDragDropSort" xml:space="preserve">
+     <value>Konfigurációk rendezésének engedélyezése húzással (újraindítást igényel)</value>
+   </data>
 -  <data name="TbSettingsEnableLinuxWayland" xml:space="preserve">
 -    <value>Natív Wayland háttérrendszer engedélyezése [kísérleti] (újraindítást igényel)</value>
 -  </data>
 -  <data name="TbSettingsEnableLinuxWaylandTip" xml:space="preserve">
 -    <value>Csak Linuxon. Ha a kurzortéma, a rendszertálca vagy az ablakok viselkedése rendellenes, kapcsold ki ezt az opciót.</value>
 -  </data>
-@@ -1776,4 +1770,4 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
+   <data name="TbAutoRefresh" xml:space="preserve">
+     <value>Automatikus frissítés</value>
+   </data>
+@@ -1776,4 +1770,4 @@
    <data name="menuNewUpdate" xml:space="preserve">
      <value>New Update</value>
    </data>
--</root>
-+\ No newline at end of file
 +</root>
-diff --git a/v2rayN/ServiceLib/Resx/ResUI.id.resx b/v2rayN/ServiceLib/Resx/ResUI.id.resx
-index 8af43507307..7fc105cfb1c 100644
---- a/v2rayN/ServiceLib/Resx/ResUI.id.resx
-+++ b/v2rayN/ServiceLib/Resx/ResUI.id.resx
-@@ -909,6 +909,0 @@
+\ No newline at end of file
+-</root>
+--- b/v2rayN/ServiceLib/Resx/ResUI.id.resx
++++ a/v2rayN/ServiceLib/Resx/ResUI.id.resx
+@@ -909,12 +909,6 @@
+   <data name="TbSettingsEnableDragDropSort" xml:space="preserve">
+     <value>Aktifkan pengurutan konfigurasi dengan seret dan lepas (perlu mulai ulang)</value>
+   </data>
 -  <data name="TbSettingsEnableLinuxWayland" xml:space="preserve">
 -    <value>Aktifkan backend Wayland native [eksperimental] (perlu mulai ulang)</value>
 -  </data>
 -  <data name="TbSettingsEnableLinuxWaylandTip" xml:space="preserve">
 -    <value>Hanya untuk Linux. Jika tema kursor, tray, atau perilaku jendela tidak normal, nonaktifkan opsi ini.</value>
 -  </data>
-@@ -1800,4 +1794,4 @@ Tindakan "Ambil sertifikat" mungkin gagal jika sertifikat self-signed digunakan
+   <data name="TbAutoRefresh" xml:space="preserve">
+     <value>Muat ulang otomatis</value>
+   </data>
+@@ -1800,4 +1794,4 @@
    <data name="TbEnableFinalFragmentTip" xml:space="preserve">
      <value>Memecah bagian akhir paket menjadi fragmen yang lebih kecil. Hal ini dapat memengaruhi throughput dan latensi.</value>
    </data>
--</root>
-+\ No newline at end of file
 +</root>
-diff --git a/v2rayN/ServiceLib/Resx/ResUI.resx b/v2rayN/ServiceLib/Resx/ResUI.resx
-index 896cafb3c03..f0de8ad6552 100644
---- a/v2rayN/ServiceLib/Resx/ResUI.resx
-+++ b/v2rayN/ServiceLib/Resx/ResUI.resx
-@@ -909,6 +909,0 @@
+\ No newline at end of file
+-</root>
+--- b/v2rayN/ServiceLib/Resx/ResUI.resx
++++ a/v2rayN/ServiceLib/Resx/ResUI.resx
+@@ -909,12 +909,6 @@
+   <data name="TbSettingsEnableDragDropSort" xml:space="preserve">
+     <value>Enable sorting Configurations by drag-n-drop (requires restart)</value>
+   </data>
 -  <data name="TbSettingsEnableLinuxWayland" xml:space="preserve">
 -    <value>Enable native Wayland backend [Experimental] (requires restart)</value>
 -  </data>
 -  <data name="TbSettingsEnableLinuxWaylandTip" xml:space="preserve">
 -    <value>Linux only. If the cursor theme, tray, or window behavior is abnormal, disable this option.</value>
 -  </data>
-diff --git a/v2rayN/ServiceLib/Resx/ResUI.ru.resx b/v2rayN/ServiceLib/Resx/ResUI.ru.resx
-index c54be5e682b..390dc540add 100644
---- a/v2rayN/ServiceLib/Resx/ResUI.ru.resx
-+++ b/v2rayN/ServiceLib/Resx/ResUI.ru.resx
-@@ -909,6 +909,0 @@
+   <data name="TbAutoRefresh" xml:space="preserve">
+     <value>Auto refresh</value>
+   </data>
+--- b/v2rayN/ServiceLib/Resx/ResUI.ru.resx
++++ a/v2rayN/ServiceLib/Resx/ResUI.ru.resx
+@@ -909,12 +909,6 @@
+   <data name="TbSettingsEnableDragDropSort" xml:space="preserve">
+     <value>Включить сортировку перетаскиванием сервера (требуется перезапуск)</value>
+   </data>
 -  <data name="TbSettingsEnableLinuxWayland" xml:space="preserve">
 -    <value>Включить нативный бэкенд Wayland [экспериментально] (требуется перезапуск)</value>
 -  </data>
 -  <data name="TbSettingsEnableLinuxWaylandTip" xml:space="preserve">
 -    <value>Только для Linux. Если тема курсора, трей или поведение окон работают некорректно, отключите этот параметр.</value>
 -  </data>
+   <data name="TbAutoRefresh" xml:space="preserve">
+     <value>Автообновление</value>
+   </data>
 @@ -1866,4 +1860,4 @@
    <data name="LvCustomCoreType" xml:space="preserve">
      <value>Ядро пользовательской конфигурации</value>
    </data>
--</root>
-+\ No newline at end of file
 +</root>
-diff --git a/v2rayN/ServiceLib/Resx/ResUI.zh-Hans.resx b/v2rayN/ServiceLib/Resx/ResUI.zh-Hans.resx
-index 9561a0d0b4b..1dfc03781c8 100644
---- a/v2rayN/ServiceLib/Resx/ResUI.zh-Hans.resx
-+++ b/v2rayN/ServiceLib/Resx/ResUI.zh-Hans.resx
-@@ -909,6 +909,0 @@
+\ No newline at end of file
+-</root>
+--- b/v2rayN/ServiceLib/Resx/ResUI.zh-Hans.resx
++++ a/v2rayN/ServiceLib/Resx/ResUI.zh-Hans.resx
+@@ -909,12 +909,6 @@
+   <data name="TbSettingsEnableDragDropSort" xml:space="preserve">
+     <value>启用配置拖放排序 (需重启)</value>
+   </data>
 -  <data name="TbSettingsEnableLinuxWayland" xml:space="preserve">
 -    <value>启用原生 Wayland 后端 [实验性] (需重启)</value>
 -  </data>
 -  <data name="TbSettingsEnableLinuxWaylandTip" xml:space="preserve">
 -    <value>仅 Linux 可用，若光标主题，托盘或窗口行为异常，请关闭此项。</value>
 -  </data>
+   <data name="TbAutoRefresh" xml:space="preserve">
+     <value>自动刷新</value>
+   </data>
 @@ -1867,4 +1861,4 @@
    <data name="LvCustomCoreType" xml:space="preserve">
      <value>自定义配置核心</value>
    </data>
--</root>
-+\ No newline at end of file
 +</root>
-diff --git a/v2rayN/ServiceLib/Resx/ResUI.zh-Hant.resx b/v2rayN/ServiceLib/Resx/ResUI.zh-Hant.resx
-index a4d614984f5..ecb492f5df4 100644
---- a/v2rayN/ServiceLib/Resx/ResUI.zh-Hant.resx
-+++ b/v2rayN/ServiceLib/Resx/ResUI.zh-Hant.resx
-@@ -909,6 +909,0 @@
+\ No newline at end of file
+-</root>
+--- b/v2rayN/ServiceLib/Resx/ResUI.zh-Hant.resx
++++ a/v2rayN/ServiceLib/Resx/ResUI.zh-Hant.resx
+@@ -909,12 +909,6 @@
+   <data name="TbSettingsEnableDragDropSort" xml:space="preserve">
+     <value>啟用拖放排序 (需重啟)</value>
+   </data>
 -  <data name="TbSettingsEnableLinuxWayland" xml:space="preserve">
 -    <value>啟用原生 Wayland 後端 [實驗性] (需重啟)</value>
 -  </data>
 -  <data name="TbSettingsEnableLinuxWaylandTip" xml:space="preserve">
 -    <value>僅 Linux 可用，若游標主題、托盤或視窗行為異常，請關閉此項。</value>
 -  </data>
-diff --git a/v2rayN/ServiceLib/ViewModels/OptionSettingViewModel.cs b/v2rayN/ServiceLib/ViewModels/OptionSettingViewModel.cs
-index 46e8207dca1..9131fc4edee 100644
---- a/v2rayN/ServiceLib/ViewModels/OptionSettingViewModel.cs
-+++ b/v2rayN/ServiceLib/ViewModels/OptionSettingViewModel.cs
-@@ -45,7 +45,6 @@ public partial class OptionSettingViewModel : MyReactiveObject, ICloseable
+   <data name="TbAutoRefresh" xml:space="preserve">
+     <value>自動重新整理</value>
+   </data>
+--- b/v2rayN/ServiceLib/ViewModels/OptionSettingViewModel.cs
++++ a/v2rayN/ServiceLib/ViewModels/OptionSettingViewModel.cs
+@@ -45,7 +45,6 @@
      [Reactive] public partial bool AutoHideStartup { get; set; }
      [Reactive] public partial bool Hide2TrayWhenClose { get; set; }
      [Reactive] public partial bool MacOSShowInDock { get; set; }
@@ -282,7 +292,7 @@ index 46e8207dca1..9131fc4edee 100644
      [Reactive] public partial bool EnableDragDropSort { get; set; }
      [Reactive] public partial bool DoubleClick2Activate { get; set; }
      [Reactive] public partial int AutoUpdateInterval { get; set; }
-@@ -176,7 +175,6 @@ private async Task Init()
+@@ -176,7 +175,6 @@
          AutoHideStartup = _config.UiItem.AutoHideStartup;
          Hide2TrayWhenClose = _config.UiItem.Hide2TrayWhenClose;
          MacOSShowInDock = _config.UiItem.MacOSShowInDock;
@@ -290,30 +300,28 @@ index 46e8207dca1..9131fc4edee 100644
          EnableDragDropSort = _config.UiItem.EnableDragDropSort;
          DoubleClick2Activate = _config.UiItem.DoubleClick2Activate;
          AutoUpdateInterval = _config.GuiItem.AutoUpdateInterval;
-@@ -305,7 +303,6 @@ private async Task SaveSettingAsync()
+@@ -305,7 +303,6 @@
                            || DisplayRealTimeSpeed != _config.GuiItem.DisplayRealTimeSpeed
                          || EnableDragDropSort != _config.UiItem.EnableDragDropSort
                          || EnableHWA != _config.GuiItem.EnableHWA
 -                        || EnableLinuxWayland != _config.UiItem.EnableLinuxWayland
                          || CurrentFontFamily != _config.UiItem.CurrentFontFamily;
-
+ 
          //Core
-@@ -350,7 +347,6 @@ private async Task SaveSettingAsync()
+@@ -350,7 +347,6 @@
          _config.UiItem.AutoHideStartup = AutoHideStartup;
          _config.UiItem.Hide2TrayWhenClose = Hide2TrayWhenClose;
          _config.UiItem.MacOSShowInDock = MacOSShowInDock;
--_config.UiItem.EnableLinuxWayland = EnableLinuxWayland;
+-        _config.UiItem.EnableLinuxWayland = EnableLinuxWayland;
          _config.GuiItem.AutoUpdateInterval = AutoUpdateInterval;
          _config.UiItem.EnableDragDropSort = EnableDragDropSort;
          _config.UiItem.DoubleClick2Activate = DoubleClick2Activate;
-diff --git a/v2rayN/v2rayN.Desktop/Program.cs b/v2rayN/v2rayN.Desktop/Program.cs
-index 2ce21bf620c..b7e76b1c260 100644
---- a/v2rayN/v2rayN.Desktop/Program.cs
-+++ b/v2rayN/v2rayN.Desktop/Program.cs
-@@ -67,11 +67,6 @@ public static AppBuilder BuildAvaloniaApp()
+--- b/v2rayN/v2rayN.Desktop/Program.cs
++++ a/v2rayN/v2rayN.Desktop/Program.cs
+@@ -67,11 +67,6 @@
             .LogToTrace()
             .UseReactiveUI(_ => { });
-
+ 
 -        if (OperatingSystem.IsLinux() && !Design.IsDesignMode && AppManager.Instance.Config.UiItem.EnableLinuxWayland)
 -        {
 -            builder = builder.UseWaylandWithFallback();
@@ -322,14 +330,12 @@ index 2ce21bf620c..b7e76b1c260 100644
          if (OperatingSystem.IsMacOS())
          {
              var showInDock = Design.IsDesignMode || AppManager.Instance.Config.UiItem.MacOSShowInDock;
-diff --git a/v2rayN/v2rayN.Desktop/Views/OptionSettingWindow.axaml b/v2rayN/v2rayN.Desktop/Views/OptionSettingWindow.axaml
-index b339ad2c73d..6ed09193234 100644
---- a/v2rayN/v2rayN.Desktop/Views/OptionSettingWindow.axaml
-+++ b/v2rayN/v2rayN.Desktop/Views/OptionSettingWindow.axaml
-@@ -591,23 +591,0 @@
+--- b/v2rayN/v2rayN.Desktop/Views/OptionSettingWindow.axaml
++++ a/v2rayN/v2rayN.Desktop/Views/OptionSettingWindow.axaml
+@@ -591,29 +591,6 @@
                              IsVisible="{Binding BlIsLinux}"
                              Text="{x:Static resx:ResUI.TbSettingsHide2TrayWhenCloseTip}" />
-
+ 
 -                        <TextBlock
 -                            Grid.Row="8"
 -                            Grid.Column="0"
@@ -356,11 +362,9 @@ index b339ad2c73d..6ed09193234 100644
                          <TextBlock
                              Grid.Row="8"
                              Grid.Column="0"
-diff --git a/v2rayN/v2rayN.Desktop/Views/OptionSettingWindow.axaml.cs b/v2rayN/v2rayN.Desktop/Views/OptionSettingWindow.axaml.cs
-index 15c6ac97699..9945d63cac9 100644
---- a/v2rayN/v2rayN.Desktop/Views/OptionSettingWindow.axaml.cs
-+++ b/v2rayN/v2rayN.Desktop/Views/OptionSettingWindow.axaml.cs
-@@ -99,7 +99,6 @@ public OptionSettingWindow()
+--- b/v2rayN/v2rayN.Desktop/Views/OptionSettingWindow.axaml.cs
++++ a/v2rayN/v2rayN.Desktop/Views/OptionSettingWindow.axaml.cs
+@@ -99,7 +99,6 @@
              this.Bind(ViewModel, vm => vm.AutoHideStartup, v => v.togAutoHideStartup.IsChecked).DisposeWith(disposables);
              this.Bind(ViewModel, vm => vm.Hide2TrayWhenClose, v => v.togHide2TrayWhenClose.IsChecked).DisposeWith(disposables);
              this.Bind(ViewModel, vm => vm.MacOSShowInDock, v => v.togMacOSShowInDock.IsChecked).DisposeWith(disposables);
@@ -368,10 +372,8 @@ index 15c6ac97699..9945d63cac9 100644
              this.Bind(ViewModel, vm => vm.EnableDragDropSort, v => v.togEnableDragDropSort.IsChecked).DisposeWith(disposables);
              this.Bind(ViewModel, vm => vm.DoubleClick2Activate, v => v.togDoubleClick2Activate.IsChecked).DisposeWith(disposables);
              this.Bind(ViewModel, vm => vm.AutoUpdateInterval, v => v.txtautoUpdateInterval.Text).DisposeWith(disposables);
-diff --git a/v2rayN/v2rayN.Desktop/v2rayN.Desktop.csproj b/v2rayN/v2rayN.Desktop/v2rayN.Desktop.csproj
-index 90447441b46..345c400a30a 100644
---- a/v2rayN/v2rayN.Desktop/v2rayN.Desktop.csproj
-+++ b/v2rayN/v2rayN.Desktop/v2rayN.Desktop.csproj
+--- b/v2rayN/v2rayN.Desktop/v2rayN.Desktop.csproj
++++ a/v2rayN/v2rayN.Desktop/v2rayN.Desktop.csproj
 @@ -16,7 +16,6 @@
  			<TreatAsUsed>true</TreatAsUsed>
  		</PackageReference>
