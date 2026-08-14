@@ -160,7 +160,7 @@ jobs:
           Expand-Archive -Force "tmp/xray.zip" "tmp/xray"
 
           Get-ChildItem "tmp/xray" -Recurse -Include "*.exe","*.dll" | ForEach-Object {
-            Copy-Item $_.FullName (Join-Path $xrayDir $_.Name) -Force
+            # Copy-Item $_.FullName (Join-Path $xrayDir $_.Name) -Force
           }
 
           Invoke-WebRequest -Uri $singUrl -OutFile "tmp/sing-box.zip"
