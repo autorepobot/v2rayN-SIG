@@ -1,0 +1,124 @@
+name: 🀫 Sync Upstream Master
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      sync_package_scripts:
+        description: '是否同步打包脚本 (package-*.sh)，覆盖本地版本'
+        type: boolean
+        default: false
+      sync_workflows:
+        description: '是否同步 upstream 的 workflows（不会删除本地独有的 yml）'
+        type: boolean
+        default: false
+      sync_readme:
+        description: '是否同步 upstream 的 README，覆盖本地版本'
+        type: boolean
+        default: false
+permissions:
+  contents: write
+env:
+  SYNC_PACKAGES: ${{ github.event.inputs.sync_package_scripts || 'false' }}
+  SYNC_WORKFLOWS: ${{ github.event.inputs.sync_workflows || 'false' }}
+  SYNC_README: ${{ github.event.inputs.sync_readme || 'false' }}
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout self repo (master)
+        uses: actions/checkout@v7
+        with:
+          ref: master
+          fetch-depth: 0
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Sync upstream master into master
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          PKG_SCRIPTS="package-debian-loong.sh package-debian-riscv.sh package-debian.sh package-rhel-loong.sh package-rhel-riscv.sh package-rhel.sh"
+
+          rm -rf /tmp/workflows_backup /tmp/pkg_backup /tmp/readme_backup
+          cp -r .github/workflows /tmp/workflows_backup
+          mkdir -p /tmp/pkg_backup
+          for f in $PKG_SCRIPTS; do
+            found=$(find . -type f -name "$f" -not -path "./.git/*" | head -n1)
+            if [ -n "$found" ]; then
+              rel="${found#./}"
+              mkdir -p "/tmp/pkg_backup/$(dirname "$rel")"
+              cp "$found" "/tmp/pkg_backup/$rel"
+              echo "$rel" >> /tmp/pkg_backup/manifest.txt
+            fi
+          done
+          mkdir -p /tmp/readme_backup
+          find . -maxdepth 1 -type f -iname "README*" -exec cp {} /tmp/readme_backup/ \;
+
+          git remote add upstream https://github.com/2dust/v2rayN.git 2>/dev/null || \
+          git remote set-url upstream https://github.com/2dust/v2rayN.git
+          git fetch upstream master
+          rm -rf /tmp/upstream_tree
+          mkdir -p /tmp/upstream_tree
+          git archive upstream/master | tar -x -C /tmp/upstream_tree
+
+          if git merge upstream/master --no-edit --allow-unrelated-histories -X theirs; then
+            echo "Merge succeeded."
+          else
+            echo "Merge failed, falling back to tree sync."
+            git merge --abort
+            git checkout upstream/master -- . ':!.github/workflows'
+          fi
+
+          rm -rf .github/workflows
+          cp -r /tmp/workflows_backup .github/workflows
+          if [ "$SYNC_WORKFLOWS" = "true" ]; then
+            if [ -d /tmp/upstream_tree/.github/workflows ]; then
+              find /tmp/upstream_tree/.github/workflows -maxdepth 1 -type f \( -name "*.yml" -o -name "*.yaml" \) -exec cp -f {} .github/workflows/ \;
+              echo "Workflows synced."
+            fi
+          else
+            echo "Workflows sync disabled."
+          fi
+
+          for f in $PKG_SCRIPTS; do
+            find . -type f -name "$f" -not -path "./.git/*" -delete
+          done
+          if [ -f /tmp/pkg_backup/manifest.txt ]; then
+            while read -r rel; do
+              [ -z "$rel" ] && continue
+              mkdir -p "$(dirname "$rel")"
+              cp "/tmp/pkg_backup/$rel" "$rel"
+            done < /tmp/pkg_backup/manifest.txt
+          fi
+          if [ "$SYNC_PACKAGES" = "true" ]; then
+            for f in $PKG_SCRIPTS; do
+              src=$(find /tmp/upstream_tree -type f -name "$f" | head -n1)
+              if [ -n "$src" ]; then
+                rel="${src#/tmp/upstream_tree/}"
+                mkdir -p "$(dirname "$rel")"
+                cp -f "$src" "$rel"
+                echo "Synced package script: $rel"
+              fi
+            done
+          else
+            echo "Package scripts sync disabled."
+          fi
+
+          find . -maxdepth 1 -type f -iname "README*" -delete
+          find /tmp/readme_backup -maxdepth 1 -type f -exec cp {} . \;
+          if [ "$SYNC_README" = "true" ]; then
+            find /tmp/upstream_tree -maxdepth 1 -type f -iname "README*" -exec cp -f {} . \;
+            echo "README synced."
+          else
+            echo "README sync disabled."
+          fi
+
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "sync: update from upstream master (workflows/package scripts/README controlled by flags)"
+          else
+            echo "No extra changes on top of merge."
+          fi
+          git push origin master
