@@ -20,11 +20,10 @@ jobs:
         fetch-depth: '0'
 
     - name: Setup .NET
-      uses: actions/setup-dotnet@v6
+      uses: actions/setup-dotnet@v6.0.0
       with:
-        dotnet-version: '10.x'
-        dotnet-quality: 'ga'
+        dotnet-version: '8.0.x'
 
     - name: Test Code
       working-directory: ./v2rayN
-      run: dotnet run --project ./ServiceLib.Tests -c Release
+      run: dotnet test ./ServiceLib.Tests

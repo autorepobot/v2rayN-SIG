@@ -69,10 +69,9 @@ jobs:
         dotnet --list-sdks 2>$null; $LASTEXITCODE=0
 
     - name: Setup .NET
-      uses: actions/setup-dotnet@v6
+      uses: actions/setup-dotnet@v6.0.0
       with:
-        dotnet-version: '10.x'
-        dotnet-quality: 'ga'
+        dotnet-version: '10.0.1xx'
 
     - name: Build v2rayN
       shell: bash
@@ -90,7 +89,7 @@ jobs:
         find ${{ matrix.arch }} -type f -name '*.pdb' -delete
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@v7.0.1
       with:
         name: ${{ matrix.arch }}
         path: ${{ matrix.arch }}
