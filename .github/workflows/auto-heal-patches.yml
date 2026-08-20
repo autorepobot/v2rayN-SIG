@@ -28,6 +28,7 @@ jobs:
           token: ${{ secrets.PAT_TOKEN || github.token }}
 
       - name: "Check and Repair Patches"
+        id: repair
         shell: bash
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -187,14 +188,19 @@ jobs:
             PROMPT=""
             PROMPT+="You are an expert Git engineer."
             PROMPT+=$'\n\n'
+
             PROMPT+="A unified diff patch failed to apply to the latest upstream/master of the v2rayN repository."
             PROMPT+=$'\n\n'
+
             PROMPT+="Your task is to repair the patch while preserving its original intent."
             PROMPT+=$'\n\n'
+
             PROMPT+="Upstream commit: ${UPSTREAM_COMMIT}"
             PROMPT+=$'\n\n'
+
             PROMPT+="Patch file: ${PATCH}"
             PROMPT+=$'\n\n'
+
             PROMPT+="Original patch:"
             PROMPT+=$'\n'
             PROMPT+='```diff'
@@ -203,6 +209,7 @@ jobs:
             PROMPT+=$'\n'
             PROMPT+='```'
             PROMPT+=$'\n\n'
+
             PROMPT+="git apply --check error:"
             PROMPT+=$'\n'
             PROMPT+='```'
@@ -211,50 +218,57 @@ jobs:
             PROMPT+=$'\n'
             PROMPT+='```'
             PROMPT+=$'\n\n'
+
             PROMPT+="Relevant files from latest upstream/master:"
             PROMPT+=$'\n'
             PROMPT+="${CONTEXT}"
-            PROMPT+=$'\n'
+            PROMPT+=$'\n\n'
+
             PROMPT+="Instructions:"
             PROMPT+=$'\n\n'
+
             PROMPT+="1. Reconstruct an updated unified diff that applies cleanly to the latest upstream/master."
             PROMPT+=$'\n'
+
             PROMPT+="2. Preserve the original intent of the patch exactly."
             PROMPT+=$'\n'
+
             PROMPT+="3. Do not introduce unrelated changes."
             PROMPT+=$'\n'
+
             PROMPT+="4. Do not modify files that are unrelated to the original patch."
             PROMPT+=$'\n'
+
             PROMPT+="5. Do not invent APIs, classes, methods, or configuration."
             PROMPT+=$'\n'
+
             PROMPT+="6. Use the latest upstream file contents as the source of truth."
             PROMPT+=$'\n'
+
             PROMPT+="7. The result must be a valid unified diff."
             PROMPT+=$'\n'
+
             PROMPT+="8. The result must be directly consumable by git apply."
             PROMPT+=$'\n'
+
             PROMPT+="9. Output ONLY the unified diff."
             PROMPT+=$'\n'
+
             PROMPT+="10. Do not wrap the result in Markdown code fences."
             PROMPT+=$'\n'
+
             PROMPT+="11. Do not add explanations or comments outside the diff."
 
             echo
-            echo "🤖 Calling Gemini..."
+            echo "🤖 Calling Gemini Interactions API..."
 
             REQUEST="$(
               jq -n \
-                --arg prompt "$PROMPT" \
+                --arg input "$PROMPT" \
                 '{
-                  contents: [
-                    {
-                      parts: [
-                        {
-                          text: $prompt
-                        }
-                      ]
-                    }
-                  ]
+                  model: "gemini-3.6-flash",
+                  store: false,
+                  input: $input
                 }'
             )"
 
@@ -273,7 +287,7 @@ jobs:
                   --connect-timeout 15 \
                   --max-time 180 \
                   -X POST \
-                  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent" \
+                  "https://generativelanguage.googleapis.com/v1beta/interactions" \
                   -H "x-goog-api-key: ${GEMINI_API_KEY}" \
                   -H "Content-Type: application/json" \
                   -d "$REQUEST" \
@@ -345,17 +359,40 @@ jobs:
               continue
             fi
 
+            INTERACTION_STATUS="$(
+              jq -r '.status // empty' "$RESPONSE_FILE"
+            )"
+
+            if [ "$INTERACTION_STATUS" = "failed" ]; then
+              echo "::error::Gemini interaction failed"
+
+              jq -r '
+                if .error then
+                  (.error.message // "Unknown interaction error")
+                else
+                  "Unknown interaction failure"
+                end
+              ' "$RESPONSE_FILE"
+
+              FAILED=$((FAILED + 1))
+              continue
+            fi
+
             TEXT="$(
               jq -r '
                 [
-                  .candidates[0].content.parts[]?.text
+                  .steps[]?
+                  | select(.type == "model_output")
+                  | .content[]?
+                  | select(.type == "text")
+                  | .text
                 ]
                 | join("")
               ' "$RESPONSE_FILE"
             )"
 
             if [ -z "$TEXT" ] || [ "$TEXT" = "null" ]; then
-              echo "::error::Gemini returned no usable response"
+              echo "::error::Gemini returned no usable model output"
               cat "$RESPONSE_FILE"
               FAILED=$((FAILED + 1))
               continue
@@ -364,22 +401,25 @@ jobs:
             echo
             echo "Gemini response received."
 
-            REPAIRED_PATCH=""
+            REPAIRED_PATCH="$TEXT"
 
-            if printf '%s\n' "$TEXT" | grep -q '^```diff[[:space:]]*$'; then
+            if printf '%s\n' "$REPAIRED_PATCH" |
+              grep -q '^```diff[[:space:]]*$'; then
+
               REPAIRED_PATCH="$(
-                printf '%s\n' "$TEXT" |
+                printf '%s\n' "$REPAIRED_PATCH" |
                 sed -n '/^```diff[[:space:]]*$/,/^```[[:space:]]*$/p' |
                 sed '1d;$d'
               )"
-            elif printf '%s\n' "$TEXT" | grep -q '^```patch[[:space:]]*$'; then
+
+            elif printf '%s\n' "$REPAIRED_PATCH" |
+              grep -q '^```patch[[:space:]]*$'; then
+
               REPAIRED_PATCH="$(
-                printf '%s\n' "$TEXT" |
+                printf '%s\n' "$REPAIRED_PATCH" |
                 sed -n '/^```patch[[:space:]]*$/,/^```[[:space:]]*$/p' |
                 sed '1d;$d'
               )"
-            else
-              REPAIRED_PATCH="$TEXT"
             fi
 
             REPAIRED_PATCH="$(
@@ -505,6 +545,12 @@ jobs:
             echo "**Upstream commit:** \`$UPSTREAM_COMMIT\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
+          if git diff --quiet -- patch/; then
+            echo "patch_changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "patch_changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
           if [ "$FAILED" -gt 0 ]; then
             echo
             echo "⚠️ Some patches could not be automatically repaired."
@@ -527,11 +573,15 @@ jobs:
           git diff -- patch/
 
       - name: "Validate Changes"
+        id: validate
         shell: bash
         run: |
           set -euo pipefail
 
-          if ! git diff --quiet -- patch/; then
+          if git diff --quiet -- patch/; then
+            echo "No patch changes detected."
+            echo "patch_changed=false" >> "$GITHUB_OUTPUT"
+          else
             echo "Patch changes detected."
 
             git diff --check -- patch/
@@ -539,12 +589,12 @@ jobs:
             echo
             echo "Changed patch files:"
             git diff --name-only -- patch/
-          else
-            echo "No patch changes detected."
+
+            echo "patch_changed=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: "Create Pull Request"
-        if: ${{ success() && hashFiles('patch/*.patch', 'patch/*.diff') != '' }}
+        if: ${{ success() && steps.validate.outputs.patch_changed == 'true' }}
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.PAT_TOKEN || github.token }}
