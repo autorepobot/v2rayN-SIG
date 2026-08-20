@@ -215,12 +215,12 @@ Instructions:
 5. Do not invent APIs, classes, methods, or configuration.
 6. Use the latest upstream file contents as the source of truth.
 7. The result must be a valid unified diff.
-8. The result must be directly consumable by "git apply".
+8. The result must be directly consumable by git apply.
 9. Output ONLY the unified diff.
 10. Do not wrap the result in Markdown code fences.
 11. Do not add explanations or comments outside the diff.
-EOF
-)"
+            EOF
+            )"
 
             echo
             echo "🤖 Calling Gemini..."
