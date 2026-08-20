@@ -55,13 +55,16 @@ jobs:
                   print(f"Command failed: {cmd}\nStderr: {res.stderr}")
               return res
 
-          # 增强版 Fetch 逻辑：配置 git 避免 SSL 错误，使用 --depth 1 优化速度
           run("git config --global user.email actions@github.com")
           run("git config --global user.name GitHubActions")
-          run("git remote add upstream [https://github.com/2dust/v2rayN.git](https://github.com/2dust/v2rayN.git)")
-          print("Fetching upstream master...")
           
-          # 尝试 fetch，如果失败再试一次，确保不是瞬时网络问题
+          # 安全清理并重新添加 upstream
+          run("git remote remove upstream 2>/dev/null || true")
+          remote_add = run("git remote add upstream [https://github.com/2dust/v2rayN.git](https://github.com/2dust/v2rayN.git)")
+          if remote_add.returncode != 0:
+              sys.exit(1)
+
+          print("Fetching upstream master...")
           fetch_res = run("git fetch upstream master --depth 1")
           if fetch_res.returncode != 0:
               fetch_res = run("git fetch upstream master")
@@ -94,7 +97,6 @@ jobs:
 
               sources = {}
               for tf in target_files:
-                  # 从 upstream/master 读取文件
                   show_res = run(f"git show upstream/master:{tf}")
                   sources[tf] = show_res.stdout if show_res.returncode == 0 else "(File missing in upstream)"
 
