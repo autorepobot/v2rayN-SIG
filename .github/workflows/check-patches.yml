@@ -1,0 +1,741 @@
+name: "🀫 Auto Check & PR Patches"
+
+"on":
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      force_run:
+        description: "是否强制运行补丁检测与 Gemini 自愈"
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-and-heal-patches:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "Checkout self repo"
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+          token: ${{ secrets.PAT_TOKEN || github.token }}
+
+      - name: "Check and Repair Patches"
+        id: repair
+        shell: bash
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          set -euo pipefail
+
+          echo "========================================"
+          echo "🀫 Sync Upstream & Auto-Heal Patches"
+          echo "========================================"
+
+          if [ -z "${GEMINI_API_KEY:-}" ]; then
+            echo "::error::GEMINI_API_KEY is not configured"
+            exit 1
+          fi
+
+          git config user.email "actions@github.com"
+          git config user.name "GitHubActions"
+
+          git remote remove upstream 2>/dev/null || true
+          git remote add upstream https://github.com/2dust/v2rayN.git
+
+          echo
+          echo "📡 Fetching upstream/master..."
+
+          git fetch upstream master --depth=1
+
+          UPSTREAM_COMMIT="$(git rev-parse upstream/master)"
+
+          echo "Upstream HEAD: $UPSTREAM_COMMIT"
+
+          if [ "${GITHUB_EVENT_NAME:-}" = "workflow_dispatch" ]; then
+            FORCE_RUN="$(jq -r '.inputs.force_run // true' "$GITHUB_EVENT_PATH")"
+
+            if [ "$FORCE_RUN" != "true" ]; then
+              echo
+              echo "force_run=false, skipping patch check."
+              exit 0
+            fi
+          fi
+
+          PATCHES=()
+
+          shopt -s nullglob
+
+          for file in patch/*.patch patch/*.diff; do
+            if [ -f "$file" ]; then
+              PATCHES+=("$file")
+            fi
+          done
+
+          shopt -u nullglob
+
+          if [ "${#PATCHES[@]}" -eq 0 ]; then
+            echo
+            echo "No patches found."
+            exit 0
+          fi
+
+          echo
+          echo "Found ${#PATCHES[@]} patch file(s):"
+
+          for patch in "${PATCHES[@]}"; do
+            echo "  - $patch"
+          done
+
+          TMP_DIR="$(mktemp -d)"
+          WORKTREE="$TMP_DIR/upstream"
+
+          cleanup() {
+            git worktree remove --force "$WORKTREE" 2>/dev/null || true
+            rm -rf "$TMP_DIR"
+          }
+
+          trap cleanup EXIT
+          detect_already_applied_hunks() {
+            local patch_file="$1"
+            local worktree="$2"
+            local output_dir="$3"
+            local hunk_dir="$output_dir/hunks"
+            local locked_file="$output_dir/already-applied-hunks.patch"
+
+            rm -rf "$hunk_dir"
+            mkdir -p "$hunk_dir"
+            : > "$locked_file"
+
+            awk -v out="$hunk_dir" '
+              /^diff --git / {
+                diff_header=$0
+                idxline=""
+                old_header=""
+                new_header=""
+                hunk_file=""
+                next
+              }
+              /^index / { idxline=$0; next }
+              /^--- a\// { old_header=$0; next }
+              /^\+\+\+ b\// { new_header=$0; next }
+              /^@@ / {
+                n++
+                hunk_file=sprintf("%s/%04d.patch", out, n)
+                print diff_header > hunk_file
+                if (idxline != "") print idxline >> hunk_file
+                print old_header >> hunk_file
+                print new_header >> hunk_file
+                print $0 >> hunk_file
+                next
+              }
+              hunk_file != "" {
+                print $0 >> hunk_file
+              }
+            ' "$patch_file"
+
+            local already_applied=0
+            local hunk_file
+            local three_way_result
+
+            while IFS= read -r hunk_file; do
+              [ -z "$hunk_file" ] && continue
+
+              if git -C "$worktree" apply --check --recount "$hunk_file" 2>/dev/null; then
+                continue
+              fi
+
+              three_way_result="$(
+                git -C "$worktree" apply --check --3way --recount "$hunk_file" 2>&1 || true
+              )"
+
+              if ! printf '%s\n' "$three_way_result" | grep -q "with conflicts"; then
+                if printf '%s\n' "$three_way_result" | grep -qE "Applied patch .* cleanly\.|Applied patch .*"; then
+                  cat "$hunk_file" >> "$locked_file"
+                  printf '\n' >> "$locked_file"
+                  already_applied=$((already_applied + 1))
+                fi
+              fi
+            done < <(find "$hunk_dir" -maxdepth 1 -type f -name '*.patch' | sort)
+
+            printf '%s\n' "$already_applied"
+          }
+
+          echo
+          echo "🌳 Creating upstream worktree..."
+
+          git worktree add --detach "$WORKTREE" upstream/master
+
+          CONFLICTS=0
+          REPAIRED=0
+          FAILED=0
+          CLEAN=0
+
+          for PATCH in "${PATCHES[@]}"; do
+            echo
+            echo "========================================"
+            echo "Checking: $PATCH"
+            echo "========================================"
+
+            PATCH_ABS="$GITHUB_WORKSPACE/$PATCH"
+
+            if git -C "$WORKTREE" apply --check --recount "$PATCH_ABS" 2>/dev/null; then
+              echo "✅ Clean: $PATCH"
+              CLEAN=$((CLEAN + 1))
+              continue
+            fi
+
+            ALREADY_APPLIED_HUNKS_FILE="$TMP_DIR/$(basename "$PATCH").already-applied-hunks.patch"
+            ALREADY_APPLIED_COUNT="$(detect_already_applied_hunks "$PATCH_ABS" "$WORKTREE" "$TMP_DIR/$(basename "$PATCH").hunks")"
+
+            if [ "$ALREADY_APPLIED_COUNT" -gt 0 ]; then
+              echo "ℹ️ Upstream already contains ${ALREADY_APPLIED_COUNT} already-applied hunk(s)."
+            fi
+
+            if [ "$ALREADY_APPLIED_COUNT" -gt 0 ] && [ -s "$ALREADY_APPLIED_HUNKS_FILE" ]; then
+              LOCKED_HUNKS="$(cat "$ALREADY_APPLIED_HUNKS_FILE")"
+            else
+              LOCKED_HUNKS=""
+            fi
+
+            THREE_WAY_CHECK="$TMP_DIR/$(basename "$PATCH").3way-check"
+            if git -C "$WORKTREE" apply --check --3way --recount "$PATCH_ABS" >"$THREE_WAY_CHECK" 2>&1; then
+              if ! grep -q "with conflicts" "$THREE_WAY_CHECK"; then
+                echo "✅ Already applied upstream: $PATCH"
+                CLEAN=$((CLEAN + 1))
+                rm -f "$THREE_WAY_CHECK"
+                continue
+              fi
+            fi
+            rm -f "$THREE_WAY_CHECK"
+
+            CONFLICTS=$((CONFLICTS + 1))
+
+            ERROR="$(
+              git -C "$WORKTREE" apply --check --recount "$PATCH_ABS" 2>&1 || true
+            )"
+            echo
+            echo "❌ Conflict detected:"
+            echo "$ERROR"
+
+            FILES="$(
+              grep -E '^(--- a/|\+\+\+ b/)' "$PATCH" |
+              sed -E 's#^(--- a/|\+\+\+ b/)##' |
+              grep -v '^/dev/null$' |
+              sort -u || true
+            )"
+            if [ -z "$FILES" ]; then
+              echo "::error::Could not detect target files in $PATCH"
+              FAILED=$((FAILED + 1))
+              continue
+            fi
+
+            echo
+            echo "Affected files:"
+
+            while IFS= read -r FILE; do
+              [ -z "$FILE" ] && continue
+              echo "  - $FILE"
+            done <<< "$FILES"
+
+            CONTEXT=""
+
+            while IFS= read -r FILE; do
+              [ -z "$FILE" ] && continue
+
+              if CONTENT="$(git show "upstream/master:$FILE" 2>/dev/null)"; then
+                CONTEXT+=$'\n'
+                CONTEXT+="### File: ${FILE}"
+                CONTEXT+=$'\n'
+                CONTEXT+='```'
+                CONTEXT+=$'\n'
+                CONTEXT+="${CONTENT}"
+                CONTEXT+=$'\n'
+                CONTEXT+='```'
+                CONTEXT+=$'\n'
+              else
+                CONTEXT+=$'\n'
+                CONTEXT+="### File: ${FILE}"
+                CONTEXT+=$'\n'
+                CONTEXT+="(File missing in upstream)"
+                CONTEXT+=$'\n'
+              fi
+            done <<< "$FILES"
+
+            PATCH_CONTENT="$(cat "$PATCH")"
+
+            PROMPT=""
+            PROMPT+="You are an expert Git engineer."
+            PROMPT+=$'\n\n'
+
+            PROMPT+="A unified diff patch failed to apply to the latest upstream/master of the v2rayN repository."
+            PROMPT+=$'\n\n'
+
+            PROMPT+="Your task is to repair the patch while preserving its original intent."
+            PROMPT+=$'\n\n'
+
+            PROMPT+="Upstream commit: ${UPSTREAM_COMMIT}"
+            PROMPT+=$'\n\n'
+
+            PROMPT+="Patch file: ${PATCH}"
+            PROMPT+=$'\n\n'
+
+            PROMPT+="Original patch:"
+            PROMPT+=$'\n'
+            PROMPT+='```diff'
+            PROMPT+=$'\n'
+            PROMPT+="${PATCH_CONTENT}"
+            PROMPT+=$'\n'
+            PROMPT+='```'
+            PROMPT+=$'\n\n'
+
+            PROMPT+="git apply --check error:"
+            PROMPT+=$'\n'
+            PROMPT+='```'
+            PROMPT+=$'\n'
+            PROMPT+="${ERROR}"
+            PROMPT+=$'\n'
+            PROMPT+='```'
+            PROMPT+=$'\n\n'
+
+            PROMPT+="Relevant files from latest upstream/master:"
+            PROMPT+=$'\n'
+            PROMPT+="${CONTEXT}"
+            PROMPT+=$'\n\n'
+
+            PROMPT+="Instructions:"
+            PROMPT+=$'\n\n'
+
+            PROMPT+="1. Reconstruct an updated unified diff that applies cleanly to the latest upstream/master."
+            PROMPT+=$'\n'
+
+            PROMPT+="2. Preserve the original intent of the patch exactly."
+            PROMPT+=$'\n'
+
+            PROMPT+="3. Do not introduce unrelated changes."
+            PROMPT+=$'\n'
+
+            PROMPT+="4. Do not modify files that are unrelated to the original patch."
+            PROMPT+=$'\n'
+
+            PROMPT+="5. Do not invent APIs, classes, methods, or configuration."
+            PROMPT+=$'\n'
+
+            PROMPT+="6. Use the latest upstream file contents as the source of truth."
+            PROMPT+=$'\n'
+
+            PROMPT+="7. The result must be a valid unified diff."
+            PROMPT+=$'\n'
+
+            PROMPT+="8. The result must be directly consumable by git apply."
+            PROMPT+=$'\n'
+
+            PROMPT+="9. Output ONLY the unified diff."
+            PROMPT+=$'\n'
+
+            PROMPT+="10. Do not wrap the result in Markdown code fences."
+            PROMPT+=$'\n'
+
+            PROMPT+="11. Do not add explanations or comments outside the diff."
+            PROMPT+=$'\n'
+
+            PROMPT+="12. Understand the original patch in the context of the original/old code it was written against, not only the latest upstream code. Compare the old code implied by the patch with the latest upstream implementation to determine what changed, and preserve the patch's original intent across upstream refactors or structural changes."
+            PROMPT+=$'\n'
+
+            PROMPT+="13. If upstream has moved, renamed, refactored, or replaced the code affected by the original patch, trace the corresponding logic in the latest upstream code and adapt the patch semantically rather than mechanically."
+            if [ -n "$LOCKED_HUNKS" ]; then
+              PROMPT+=$'\n'
+              PROMPT+="14. The following hunk(s) are already satisfied by latest upstream/master. Do not modify, remove, or rewrite them. Preserve them byte-for-byte in the output. Only repair other conflicting hunks."
+              PROMPT+=$'\n\n'
+              PROMPT+="Locked hunk(s):"
+              PROMPT+=$'\n'
+              PROMPT+='```diff'
+              PROMPT+=$'\n'
+              PROMPT+="${LOCKED_HUNKS}"
+              PROMPT+=$'\n'
+              PROMPT+='```'
+              PROMPT+=$'\n'
+            fi
+
+            echo
+            echo "🤖 Calling Gemini Interactions API..."
+
+            REQUEST="$(
+              jq -n \
+                --arg input "$PROMPT" \
+                '{
+                  model: "gemini-3.6-flash",
+                  store: false,
+                  input: $input
+                }'
+            )"
+            RESPONSE_FILE="$TMP_DIR/gemini-response.json"
+            GEMINI_SUCCESS=false
+
+            for ATTEMPT in 1 2 3 4 5; do
+              echo
+              echo "Gemini request attempt ${ATTEMPT}/5..."
+
+              HTTP_CODE="$(
+                curl \
+                  -sS \
+                  -o "$RESPONSE_FILE" \
+                  -w "%{http_code}" \
+                  --connect-timeout 15 \
+                  --max-time 180 \
+                  -X POST \
+                  "https://generativelanguage.googleapis.com/v1beta/interactions" \
+                  -H "x-goog-api-key: ${GEMINI_API_KEY}" \
+                  -H "Content-Type: application/json" \
+                  -d "$REQUEST" \
+                  || true
+              )"
+
+              case "$HTTP_CODE" in
+                200)
+                  GEMINI_SUCCESS=true
+                  break
+                  ;;
+
+                408|429|500|502|503|504)
+                  echo "Gemini returned HTTP ${HTTP_CODE}."
+
+                  if [ "$ATTEMPT" -lt 5 ]; then
+                    BASE_DELAY=$((2 ** (ATTEMPT - 1)))
+                    JITTER=$((RANDOM % 3))
+                    DELAY=$((BASE_DELAY + JITTER))
+
+                    echo "Retrying in ${DELAY}s..."
+                    sleep "$DELAY"
+                  fi
+                  ;;
+
+                *)
+                  echo "::error::Gemini API returned HTTP ${HTTP_CODE}"
+
+                  if [ -f "$RESPONSE_FILE" ]; then
+                    cat "$RESPONSE_FILE"
+                  fi
+
+                  break
+                  ;;
+              esac
+            done
+
+            if [ "$GEMINI_SUCCESS" != "true" ]; then
+              echo "::error::Gemini API request failed after 5 attempts"
+
+              if [ -f "$RESPONSE_FILE" ]; then
+                cat "$RESPONSE_FILE"
+              fi
+
+              FAILED=$((FAILED + 1))
+              continue
+            fi
+
+            if ! jq empty "$RESPONSE_FILE" >/dev/null 2>&1; then
+              echo "::error::Gemini returned invalid JSON"
+              cat "$RESPONSE_FILE"
+              FAILED=$((FAILED + 1))
+              continue
+            fi
+
+            API_ERROR="$(
+              jq -r '
+                if .error then
+                  (.error.message // "Unknown Gemini API error")
+                else
+                  empty
+                end
+              ' "$RESPONSE_FILE"
+            )"
+            if [ -n "$API_ERROR" ]; then
+              echo "::error::Gemini API error: $API_ERROR"
+              FAILED=$((FAILED + 1))
+              continue
+            fi
+
+            INTERACTION_STATUS="$(
+              jq -r '.status // empty' "$RESPONSE_FILE"
+            )"
+            if [ "$INTERACTION_STATUS" = "failed" ]; then
+              echo "::error::Gemini interaction failed"
+
+              jq -r '
+                if .error then
+                  (.error.message // "Unknown interaction error")
+                else
+                  "Unknown interaction failure"
+                end
+              ' "$RESPONSE_FILE"
+
+              FAILED=$((FAILED + 1))
+              continue
+            fi
+
+            TEXT="$(
+              jq -r '
+                [
+                  .steps[]?
+                  | select(.type == "model_output")
+                  | .content[]?
+                  | select(.type == "text")
+                  | .text
+                ]
+                | join("")
+              ' "$RESPONSE_FILE"
+            )"
+            if [ -z "$TEXT" ] || [ "$TEXT" = "null" ]; then
+              echo "::error::Gemini returned no usable model output"
+              cat "$RESPONSE_FILE"
+              FAILED=$((FAILED + 1))
+              continue
+            fi
+
+            echo
+            echo "Gemini response received."
+
+            REPAIRED_PATCH="$TEXT"
+
+            if printf '%s\n' "$REPAIRED_PATCH" |
+              grep -q '^```diff[[:space:]]*$'; then
+
+              REPAIRED_PATCH="$(
+                printf '%s\n' "$REPAIRED_PATCH" |
+                sed -n '/^```diff[[:space:]]*$/,/^```[[:space:]]*$/p' |
+                sed '1d;$d'
+              )"
+
+            elif printf '%s\n' "$REPAIRED_PATCH" |
+              grep -q '^```patch[[:space:]]*$'; then
+
+              REPAIRED_PATCH="$(
+                printf '%s\n' "$REPAIRED_PATCH" |
+                sed -n '/^```patch[[:space:]]*$/,/^```[[:space:]]*$/p' |
+                sed '1d;$d'
+              )"
+            fi
+
+            REPAIRED_PATCH="$(
+              printf '%s\n' "$REPAIRED_PATCH" |
+              sed '/^[[:space:]]*```[a-zA-Z0-9_-]*[[:space:]]*$/d' |
+              sed '/^[[:space:]]*```[[:space:]]*$/d'
+            )"
+            if [ -z "$REPAIRED_PATCH" ]; then
+              echo "::error::Gemini returned an empty patch"
+              FAILED=$((FAILED + 1))
+              continue
+            fi
+
+            if ! printf '%s\n' "$REPAIRED_PATCH" |
+              grep -qE '^(--- |\+\+\+ )'; then
+
+              echo "::error::Gemini output does not look like a unified diff"
+              echo "$REPAIRED_PATCH"
+              FAILED=$((FAILED + 1))
+              continue
+            fi
+
+            CANDIDATE="$TMP_DIR/$(basename "$PATCH").gemini"
+
+            printf '%s\n' "$REPAIRED_PATCH" > "$CANDIDATE"
+
+            echo
+            echo "🔍 Validating Gemini patch..."
+
+            VALIDATION_ERROR=""
+
+            VALIDATION_OUTPUT="$(
+              git -C "$WORKTREE" apply --check --3way --recount "$CANDIDATE" 2>&1 || true
+            )"
+            if ! printf '%s\n' "$VALIDATION_OUTPUT" | grep -q "with conflicts" && \
+              ! printf '%s\n' "$VALIDATION_OUTPUT" | grep -qE '^error:|^fatal:'; then
+
+              echo "✅ Gemini patch applies cleanly."
+
+              WHITESPACE_OUTPUT="$(
+                git -C "$WORKTREE" apply \
+                  --check \
+                  --recount \
+                  --3way \
+                  --whitespace=error \
+                  "$CANDIDATE" 2>&1 || true
+              )"
+
+              if [ -n "$WHITESPACE_OUTPUT" ]; then
+                if printf '%s\n' "$WHITESPACE_OUTPUT" | grep -q "with conflicts" || \
+                  printf '%s\n' "$WHITESPACE_OUTPUT" | grep -qE '^error:|^fatal:'; then
+                  echo "::error::Gemini patch contains validation errors"
+                  echo "$WHITESPACE_OUTPUT"
+                  FAILED=$((FAILED + 1))
+                  continue
+                fi
+              fi
+
+              VALIDATION_WORKTREE="$TMP_DIR/validation"
+
+              git worktree add \
+                --detach \
+                "$VALIDATION_WORKTREE" \
+                upstream/master \
+                >/dev/null
+
+              if git -C "$VALIDATION_WORKTREE" apply \
+                --3way \
+                --recount \
+                "$CANDIDATE"; then
+
+                echo "✅ Candidate patch applied successfully."
+
+                cp "$CANDIDATE" "$PATCH"
+
+                REPAIRED=$((REPAIRED + 1))
+
+                echo "✨ Repaired: $PATCH"
+              else
+                echo "::error::Candidate failed during actual apply"
+                FAILED=$((FAILED + 1))
+              fi
+
+              git worktree remove \
+                --force \
+                "$VALIDATION_WORKTREE" \
+                2>/dev/null || true
+
+            else
+
+              echo "❌ Gemini repair failed validation:"
+              echo "$VALIDATION_OUTPUT"
+              echo "⚠️ Original patch was left untouched."
+
+              FAILED=$((FAILED + 1))
+            fi
+          done
+
+          echo
+          echo "========================================"
+          echo "Final validation"
+          echo "========================================"
+
+          if git diff --check -- patch/; then
+            echo "✅ git diff --check passed."
+          else
+            echo "::error::git diff --check failed."
+            exit 1
+          fi
+
+          echo
+          echo "========================================"
+          echo "Summary"
+          echo "========================================"
+
+          echo "Total patches : ${#PATCHES[@]}"
+          echo "Clean         : $CLEAN"
+          echo "Conflicts     : $CONFLICTS"
+          echo "Repaired      : $REPAIRED"
+          echo "Failed        : $FAILED"
+
+          {
+            echo "## 🀫 Patch Auto-Heal Summary"
+            echo
+            echo "| Metric | Count |"
+            echo "|---|---:|"
+            echo "| Total patches | ${#PATCHES[@]} |"
+            echo "| Clean | $CLEAN |"
+            echo "| Conflicts | $CONFLICTS |"
+            echo "| Repaired | $REPAIRED |"
+            echo "| Failed | $FAILED |"
+            echo
+            echo "**Upstream commit:** \`$UPSTREAM_COMMIT\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if git diff --quiet -- patch/; then
+            echo "patch_changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "patch_changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ "$FAILED" -gt 0 ]; then
+            echo
+            echo "⚠️ Some patches could not be automatically repaired."
+          fi
+
+      - name: "Show Changes"
+        shell: bash
+        run: |
+          echo "========================================"
+          echo "Changed files"
+          echo "========================================"
+
+          git status --short
+
+          echo
+          echo "========================================"
+          echo "Patch diff"
+          echo "========================================"
+
+          git diff -- patch/
+
+      - name: "Validate Changes"
+        id: validate
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- patch/; then
+            echo "No patch changes detected."
+            echo "patch_changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Patch changes detected."
+
+            git diff --check -- patch/
+
+            echo
+            echo "Changed patch files:"
+            git diff --name-only -- patch/
+
+            echo "patch_changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: "Create Pull Request"
+        if: ${{ success() && steps.validate.outputs.patch_changed == 'true' }}
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.PAT_TOKEN || github.token }}
+          commit-message: "fix(patch): auto-heal patch conflicts"
+          title: "🀫 [Auto-Fix] 自动修复 Patch 冲突"
+          body: |
+            ## 自动修复 Patch 冲突
+
+            This PR was generated automatically after detecting
+            patch conflicts against the latest upstream/master.
+
+            Validation flow:
+
+            1. Fetch latest upstream/master
+            2. Check every local patch
+            3. Call Gemini only when a patch conflicts
+            4. Generate a repaired unified diff
+            5. Validate with git apply --check
+            6. Validate whitespace
+            7. Apply the candidate patch in a temporary worktree
+            8. Replace the original patch only after validation succeeds
+            9. Run git diff --check
+            10. Create this PR
+
+            The original patch is preserved whenever Gemini validation fails.
+
+          branch: auto-fix/patch-conflicts
+          delete-branch: true
+          base: master
+          labels: |
+            automated
+            patch
+            upstream-sync
