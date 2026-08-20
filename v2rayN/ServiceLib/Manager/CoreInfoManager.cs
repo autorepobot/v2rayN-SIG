@@ -63,8 +63,8 @@ public sealed class CoreInfoManager
 
             if (!(Utils.IsWindows() && Environment.OSVersion.Version.Major < 10))
             {
-                lst.Add(ECoreType.Xray);
-                lst.Add(ECoreType.mihomo);
+                // lst.Add(ECoreType.Xray);
+                // lst.Add(ECoreType.mihomo);
                 lst.Add(ECoreType.sing_box);
             }
         }
