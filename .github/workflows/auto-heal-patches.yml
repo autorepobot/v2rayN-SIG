@@ -39,90 +39,79 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          python -c '
+          # 将 URL 拆解以防 Markdown 渲染干扰
+          UPSTREAM_URL="https://github.com/2dust/v2rayN.git"
+          
+          python -c "
           import os, re, glob, subprocess, sys
           from google import genai
           from google.genai import types
 
-          api_key = os.environ.get("GEMINI_API_KEY")
+          api_key = os.environ.get('GEMINI_API_KEY')
           client = genai.Client(api_key=api_key)
-          BT = "```"
+          url = os.environ.get('UPSTREAM_URL')
+          BT = '```'
 
           def run(cmd):
-              print(f"Running: {cmd}")
+              print(f'Running: {cmd}')
               res = subprocess.run(cmd, shell=True, capture_output=True, text=True)
               if res.returncode != 0:
-                  print(f"Command failed: {cmd}\nStderr: {res.stderr}")
+                  print(f'Command failed: {cmd}\nStderr: {res.stderr}')
               return res
 
-          run("git config --global user.email actions@github.com")
-          run("git config --global user.name GitHubActions")
+          run('git config --global user.email actions@github.com')
+          run('git config --global user.name GitHubActions')
+          run('git remote remove upstream 2>/dev/null || true')
           
-          run("git remote remove upstream 2>/dev/null || true")
-          
-          # 使用字符串拼接防止 Markdown 自动识别为超链接加括号
-          repo_url = "https://" + "[github.com/2dust/v2rayN.git](https://github.com/2dust/v2rayN.git)"
-          remote_add = run(f"git remote add upstream {repo_url}")
-          if remote_add.returncode != 0:
+          # 使用环境变量传入 URL，完全绕过 shell 的语法解析风险
+          if run(f'git remote add upstream {url}').returncode != 0:
               sys.exit(1)
 
-          print("Fetching upstream master...")
-          fetch_res = run("git fetch upstream master --depth 1")
-          if fetch_res.returncode != 0:
-              fetch_res = run("git fetch upstream master")
-              if fetch_res.returncode != 0:
-                  print("::error::Failed to fetch upstream master even after retry")
+          print('Fetching upstream master...')
+          if run('git fetch upstream master --depth 1').returncode != 0:
+              if run('git fetch upstream master').returncode != 0:
+                  print('::error::Failed to fetch upstream master')
                   sys.exit(1)
 
-          patches = sorted(glob.glob("patch/*.patch") + glob.glob("patch/*.diff"))
+          patches = sorted(glob.glob('patch/*.patch') + glob.glob('patch/*.diff'))
           if not patches:
-              print("No patches found in patch/ directory.")
               sys.exit(0)
 
           for patch_path in patches:
-              print(f"\n----------------------------------------\nChecking patch: {patch_path}")
-              check_res = run(f"git apply --check --directory=. {patch_path}")
-              if check_res.returncode == 0:
-                  print(f"✅ Clean: {patch_path}")
+              print(f'Checking: {patch_path}')
+              if run(f'git apply --check --directory=. {patch_path}').returncode == 0:
                   continue
 
-              print(f"❌ Conflict detected in {patch_path}!")
-              with open(patch_path, "r", encoding="utf-8", errors="ignore") as f:
+              print(f'❌ Conflict in {patch_path}')
+              with open(patch_path, 'r', encoding='utf-8', errors='ignore') as f:
                   orig_patch = f.read()
 
               target_files = set()
               for line in orig_patch.splitlines():
-                  if line.startswith("--- a/") or line.startswith("+++ b/"):
-                      path = line[6:].strip()
-                      if path and path != "/dev/null":
-                          target_files.add(path)
+                  if (line.startswith('--- a/') or line.startswith('+++ b/')) and '/dev/null' not in line:
+                      target_files.add(line[6:].strip())
 
-              sources = {}
-              for tf in target_files:
-                  show_res = run(f"git show upstream/master:{tf}")
-                  sources[tf] = show_res.stdout if show_res.returncode == 0 else "(File missing in upstream)"
-
-              prompt = f"You are an expert Git engineer. A patch file failed to apply to upstream master.\n\n### Patch File ({patch_path}):\n{BT}diff\n{orig_patch}\n{BT}\n\n### Error:\n{check_res.stderr}\n\n### Upstream Files:\n"
+              sources = {tf: run(f'git show upstream/master:{tf}').stdout for tf in target_files}
+              
+              prompt = f'Expert Git engineer needed. Patch failed to apply.\n\n### Patch:\n{BT}diff\n{orig_patch}\n{BT}\n\n### Files:\n'
               for tf, content in sources.items():
-                  prompt += f"\n#### File: {tf}\n{BT}csharp\n{content}\n{BT}\n"
+                  prompt += f'\n#### File: {tf}\n{BT}csharp\n{content}\n{BT}\n'
 
-              prompt += "\n### Instructions:\n1. Reconstruct an UPDATED unified diff that applies to the latest upstream.\n2. Output ONLY the patch block.\n"
-
-              print(f"Calling Gemini for {patch_path}...")
-              response = client.models.generate_content(
-                  model="gemini-3.7-flash",
-                  contents=prompt,
+              prompt += '\n### Task: Provide UPDATED unified diff. Output ONLY the patch block.'
+              
+              res = client.models.generate_content(
+                  model='gemini-3.7-flash', contents=prompt,
                   config=types.GenerateContentConfig(thinking_config=types.ThinkingConfig(thinking_budget=2048))
               )
               
-              match = re.search(r"```(?:diff|patch)?\n(.*?)\n```", response.text, re.DOTALL)
+              match = re.search(r'```(?:diff|patch)?\n(.*?)\n```', res.text, re.DOTALL)
               if match:
-                  with open(patch_path, "w", encoding="utf-8") as f:
-                      f.write(match.group(1).strip() + "\n")
-                  print(f"✨ Repaired {patch_path}")
-              else:
-                  print(f"::error::Failed to parse patch for {patch_path}")
-          '
+                  with open(patch_path, 'w', encoding='utf-8') as f:
+                      f.write(match.group(1).strip() + '\n')
+                  print(f'✨ Repaired {patch_path}')
+          "
+        env:
+          UPSTREAM_URL: https://github.com/2dust/v2rayN.git
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v7
