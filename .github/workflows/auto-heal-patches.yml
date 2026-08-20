@@ -187,19 +187,14 @@ jobs:
             PROMPT=""
             PROMPT+="You are an expert Git engineer."
             PROMPT+=$'\n\n'
-
             PROMPT+="A unified diff patch failed to apply to the latest upstream/master of the v2rayN repository."
             PROMPT+=$'\n\n'
-
             PROMPT+="Your task is to repair the patch while preserving its original intent."
             PROMPT+=$'\n\n'
-
             PROMPT+="Upstream commit: ${UPSTREAM_COMMIT}"
             PROMPT+=$'\n\n'
-
             PROMPT+="Patch file: ${PATCH}"
             PROMPT+=$'\n\n'
-
             PROMPT+="Original patch:"
             PROMPT+=$'\n'
             PROMPT+='```diff'
@@ -208,7 +203,6 @@ jobs:
             PROMPT+=$'\n'
             PROMPT+='```'
             PROMPT+=$'\n\n'
-
             PROMPT+="git apply --check error:"
             PROMPT+=$'\n'
             PROMPT+='```'
@@ -217,45 +211,32 @@ jobs:
             PROMPT+=$'\n'
             PROMPT+='```'
             PROMPT+=$'\n\n'
-
             PROMPT+="Relevant files from latest upstream/master:"
             PROMPT+=$'\n'
             PROMPT+="${CONTEXT}"
             PROMPT+=$'\n'
-
             PROMPT+="Instructions:"
             PROMPT+=$'\n\n'
-
             PROMPT+="1. Reconstruct an updated unified diff that applies cleanly to the latest upstream/master."
             PROMPT+=$'\n'
-
             PROMPT+="2. Preserve the original intent of the patch exactly."
             PROMPT+=$'\n'
-
             PROMPT+="3. Do not introduce unrelated changes."
             PROMPT+=$'\n'
-
             PROMPT+="4. Do not modify files that are unrelated to the original patch."
             PROMPT+=$'\n'
-
             PROMPT+="5. Do not invent APIs, classes, methods, or configuration."
             PROMPT+=$'\n'
-
             PROMPT+="6. Use the latest upstream file contents as the source of truth."
             PROMPT+=$'\n'
-
             PROMPT+="7. The result must be a valid unified diff."
             PROMPT+=$'\n'
-
             PROMPT+="8. The result must be directly consumable by git apply."
             PROMPT+=$'\n'
-
             PROMPT+="9. Output ONLY the unified diff."
             PROMPT+=$'\n'
-
             PROMPT+="10. Do not wrap the result in Markdown code fences."
             PROMPT+=$'\n'
-
             PROMPT+="11. Do not add explanations or comments outside the diff."
 
             echo
@@ -273,27 +254,70 @@ jobs:
                         }
                       ]
                     }
-                  ],
-                  generationConfig: {
-                    temperature: 0.1
-                  }
+                  ]
                 }'
             )"
 
             RESPONSE_FILE="$TMP_DIR/gemini-response.json"
+            GEMINI_SUCCESS=false
 
-            if ! curl -fsS \
-              --retry 2 \
-              --retry-delay 2 \
-              --connect-timeout 15 \
-              --max-time 120 \
-              -X POST \
-              "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent?key=${GEMINI_API_KEY}" \
-              -H "Content-Type: application/json" \
-              -d "$REQUEST" \
-              > "$RESPONSE_FILE"; then
+            for ATTEMPT in 1 2 3 4 5; do
+              echo
+              echo "Gemini request attempt ${ATTEMPT}/5..."
 
-              echo "::error::Gemini API request failed"
+              HTTP_CODE="$(
+                curl \
+                  -sS \
+                  -o "$RESPONSE_FILE" \
+                  -w "%{http_code}" \
+                  --connect-timeout 15 \
+                  --max-time 180 \
+                  -X POST \
+                  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent" \
+                  -H "x-goog-api-key: ${GEMINI_API_KEY}" \
+                  -H "Content-Type: application/json" \
+                  -d "$REQUEST" \
+                  || true
+              )"
+
+              case "$HTTP_CODE" in
+                200)
+                  GEMINI_SUCCESS=true
+                  break
+                  ;;
+
+                408|429|500|502|503|504)
+                  echo "Gemini returned HTTP ${HTTP_CODE}."
+
+                  if [ "$ATTEMPT" -lt 5 ]; then
+                    BASE_DELAY=$((2 ** (ATTEMPT - 1)))
+                    JITTER=$((RANDOM % 3))
+                    DELAY=$((BASE_DELAY + JITTER))
+
+                    echo "Retrying in ${DELAY}s..."
+                    sleep "$DELAY"
+                  fi
+                  ;;
+
+                *)
+                  echo "::error::Gemini API returned HTTP ${HTTP_CODE}"
+
+                  if [ -f "$RESPONSE_FILE" ]; then
+                    cat "$RESPONSE_FILE"
+                  fi
+
+                  break
+                  ;;
+              esac
+            done
+
+            if [ "$GEMINI_SUCCESS" != "true" ]; then
+              echo "::error::Gemini API request failed after 5 attempts"
+
+              if [ -f "$RESPONSE_FILE" ]; then
+                cat "$RESPONSE_FILE"
+              fi
+
               FAILED=$((FAILED + 1))
               continue
             fi
@@ -370,7 +394,9 @@ jobs:
               continue
             fi
 
-            if ! printf '%s\n' "$REPAIRED_PATCH" | grep -qE '^(--- |\+\+\+ )'; then
+            if ! printf '%s\n' "$REPAIRED_PATCH" |
+              grep -qE '^(--- |\+\+\+ )'; then
+
               echo "::error::Gemini output does not look like a unified diff"
               echo "$REPAIRED_PATCH"
               FAILED=$((FAILED + 1))
@@ -518,7 +544,7 @@ jobs:
           fi
 
       - name: "Create Pull Request"
-        if: ${{ success() }}
+        if: ${{ success() && hashFiles('patch/*.patch', 'patch/*.diff') != '' }}
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.PAT_TOKEN || github.token }}
