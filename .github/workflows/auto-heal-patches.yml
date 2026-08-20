@@ -1,0 +1,169 @@
+name: 🀫 Sync Upstream & Auto-Heal Patches
+on:
+  schedule:
+    - cron: '0 3 * * *' # 每天 UTC 03:00 (北京时间 11:00) 自动检查
+  workflow_dispatch:      # 手动触发入口
+    inputs:
+      force_run:
+        description: '是否强制运行补丁检测与 Gemini 自愈'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-and-heal-patches:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout self repo (master)
+        uses: actions/checkout@v7
+        with:
+          ref: master
+          fetch-depth: 0
+          token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install google-genai
+
+      - name: Check and Repair Patches via Gemini 3.7 Flash
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          cat << 'EOF' > heal.py
+          import os
+          import re
+          import glob
+          import subprocess
+          from google import genai
+          from google.genai import types
+
+          api_key = os.environ.get("GEMINI_API_KEY")
+          if not api_key:
+              print("::error::GEMINI_API_KEY secret is missing!")
+              exit(1)
+
+          client = genai.Client(api_key=api_key)
+          BT = "```"  # 防止 Markdown 嵌套解析爆版
+
+          def run(cmd):
+              return subprocess.run(cmd, shell=True, capture_output=True, text=True)
+
+          # 1. Fetch upstream 2dust/v2rayN master
+          run("git remote add upstream https://github.com/2dust/v2rayN.git 2>/dev/null || git remote set-url upstream https://github.com/2dust/v2rayN.git")
+          print("Fetching upstream master...")
+          if run("git fetch upstream master").returncode != 0:
+              print("::error::Failed to fetch upstream master")
+              exit(1)
+
+          # 2. 检索 patch/ 目录下的所有补丁文件
+          patches = sorted(glob.glob("patch/*.patch") + glob.glob("patch/*.diff"))
+          if not patches:
+              print("No patches found in patch/ directory.")
+              exit(0)
+
+          repaired_patches = []
+
+          for patch_path in patches:
+              print(f"\n----------------------------------------")
+              print(f"Checking patch: {patch_path}")
+
+              # 测试补丁能否无冲突应用
+              check_res = run(f"git apply --check --directory=. {patch_path}")
+              if check_res.returncode == 0:
+                  print(f"✅ Clean: {patch_path}")
+                  continue
+
+              print(f"❌ Conflict detected in {patch_path}!")
+              
+              with open(patch_path, "r", encoding="utf-8", errors="ignore") as f:
+                  orig_patch = f.read()
+
+              # 解析补丁修改的目标源码文件
+              target_files = set()
+              for line in orig_patch.splitlines():
+                  if line.startswith("--- a/") or line.startswith("+++ b/"):
+                      path = line[6:].strip()
+                      if path and path != "/dev/null":
+                          target_files.add(path)
+
+              # 读取 upstream/master 中对应文件的最新完整源码 (不做截断)
+              sources = {}
+              for tf in target_files:
+                  show_res = run(f"git show upstream/master:{tf}")
+                  sources[tf] = show_res.stdout if show_res.returncode == 0 else "(File missing in upstream)"
+
+              # 构建提示词
+              prompt = f"""You are an expert Git engineer specialized in C# and Linux packaging patches.
+A patch file failed to apply cleanly to the latest upstream master branch of v2rayN.
+
+### Target Patch File ({patch_path}):
+{BT}diff
+{orig_patch}
+{BT}
+
+### Git Apply Error Details:
+{check_res.stderr}
+
+### Upstream Master Target Source Files:
+"""
+              for tf, content in sources.items():
+                  prompt += f"\n#### Source File: {tf}\n{BT}csharp\n{content}\n{BT}\n"
+
+              prompt += f"""
+### Task Instructions:
+1. Analyze the original patch's functional intent, the conflict errors, and the latest upstream code.
+2. Reconstruct an UPDATED unified diff (.patch) that seamlessly applies the exact same intended modifications to the latest upstream code.
+3. Keep unified diff formatting strict with standard `a/` and `b/` prefixes.
+4. Output ONLY the raw updated patch content enclosed in a single {BT}diff ... {BT} block. Do not add conversational text outside the block.
+"""
+
+              print(f"Calling Gemini 3.7 Flash (with thinking) for {patch_path}...")
+              try:
+                  response = client.models.generate_content(
+                      model="gemini-3.7-flash",
+                      contents=prompt,
+                      config=types.GenerateContentConfig(
+                          thinking_config=types.ThinkingConfig(thinking_budget=2048)
+                      )
+                  )
+                  match = re.search(r"```(?:diff|patch)?\n(.*?)\n```", response.text, re.DOTALL)
+                  new_patch = (match.group(1).strip() if match else response.text.strip()) + "\n"
+
+                  # 将消解冲突后的 Patch 写回原文件
+                  with open(patch_path, "w", encoding="utf-8") as f:
+                      f.write(new_patch)
+
+                  repaired_patches.append(patch_path)
+                  print(f"✨ Repaired {patch_path}")
+              except Exception as e:
+                  print(f"::error::Gemini API call failed for {patch_path}: {e}")
+
+          print(f"\nAll checks done. Repaired patches: {repaired_patches}")
+          EOF
+
+          python heal.py
+
+      - name: Create Pull Request if patches were repaired
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          commit-message: "fix(patch): auto-heal patch conflicts with upstream master"
+          title: "🀫 [Auto-Fix] 自动修复与 2dust/v2rayN upstream/master 冲突的 Patch"
+          body: |
+            ## 🤖 Gemini 3.7 Flash Patch 自动修复报告
+
+            工作流检测到 `patch/` 目录下的补丁与 `2dust/v2rayN` 最新 master 代码存在冲突，已调用 **Gemini 3.7 Flash** 结合 upstream 最新源码自动重构补丁。
+
+            请审查此 PR 中的 `.patch` 改动，确认无误后合并入 `master`。
+          branch: "auto-fix/patch-conflicts"
+          delete-branch: true
