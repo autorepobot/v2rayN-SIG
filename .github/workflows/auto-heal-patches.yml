@@ -1,7 +1,9 @@
 name: 🀫 Sync Upstream & Auto-Heal Patches
+
 on:
   schedule:
     - cron: '0 3 * * *'
+
   workflow_dispatch:
     inputs:
       force_run:
@@ -17,6 +19,7 @@ permissions:
 jobs:
   check-and-heal-patches:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout self repo
         uses: actions/checkout@v7
@@ -35,94 +38,598 @@ jobs:
           python -m pip install --upgrade pip
           pip install google-genai
 
-      - name: Check and Repair Patches via Gemini 3.7 Flash
+      - name: Check and Repair Patches via Gemini
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          python -c '
-          import os, re, glob, subprocess, sys
+          python <<'PY'
+          import glob
+          import os
+          import re
+          import shutil
+          import subprocess
+          import sys
+          import tempfile
+          from pathlib import Path
+
           from google import genai
           from google.genai import types
 
+
+          # ============================================================
+          # Basic helpers
+          # ============================================================
+
+          def run(cmd, cwd=None, check=False):
+              cmd = [str(x) for x in cmd]
+
+              print("$", " ".join(repr(x) for x in cmd))
+
+              result = subprocess.run(
+                  cmd,
+                  cwd=cwd,
+                  text=True,
+                  capture_output=True,
+              )
+
+              if result.stdout:
+                  print(result.stdout, end="")
+
+              if result.returncode != 0 and result.stderr:
+                  print(result.stderr, file=sys.stderr, end="")
+
+              if check and result.returncode != 0:
+                  raise RuntimeError(
+                      f"Command failed with exit code {result.returncode}: "
+                      f"{' '.join(cmd)}"
+                  )
+
+              return result
+
+
+          # ============================================================
+          # Validate Gemini API key
+          # ============================================================
+
           api_key = os.environ.get("GEMINI_API_KEY")
-          client = genai.Client(api_key=api_key)
-          BT = "```"
 
-          def run(cmd):
-              print(f"Running: {cmd}")
-              res = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-              if res.returncode != 0:
-                  print(f"Command failed: {cmd}\nStderr: {res.stderr}")
-              return res
-
-          run("git config --global user.email actions@github.com")
-          run("git config --global user.name GitHubActions")
-          
-          run("git remote remove upstream 2>/dev/null || true")
-          
-          # 使用字符串拼接防止 Markdown 自动识别为超链接加括号
-          repo_url = "https://github.com/2dust/v2rayN.git"
-          remote_add = run(f"git remote add upstream {repo_url}")
-          if remote_add.returncode != 0:
+          if not api_key:
+              print("::error::GEMINI_API_KEY is not configured")
               sys.exit(1)
 
-          print("Fetching upstream master...")
-          fetch_res = run("git fetch upstream master --depth 1")
-          if fetch_res.returncode != 0:
-              fetch_res = run("git fetch upstream master")
-              if fetch_res.returncode != 0:
-                  print("::error::Failed to fetch upstream master even after retry")
-                  sys.exit(1)
+          client = genai.Client(api_key=api_key)
 
-          patches = sorted(glob.glob("patch/*.patch") + glob.glob("patch/*.diff"))
-          if not patches:
-              print("No patches found in patch/ directory.")
+          repo_root = Path.cwd()
+
+          # ============================================================
+          # Git identity
+          # ============================================================
+
+          run(
+              ["git", "config", "user.email", "actions@github.com"],
+              cwd=repo_root,
+              check=True,
+          )
+
+          run(
+              ["git", "config", "user.name", "GitHubActions"],
+              cwd=repo_root,
+              check=True,
+          )
+
+          # ============================================================
+          # Configure upstream remote
+          # ============================================================
+
+          remote_check = run(
+              ["git", "remote", "get-url", "upstream"],
+              cwd=repo_root,
+          )
+
+          if remote_check.returncode == 0:
+              run(
+                  ["git", "remote", "remove", "upstream"],
+                  cwd=repo_root,
+                  check=True,
+              )
+
+          repo_url = "https://github.com/2dust/v2rayN.git"
+
+          run(
+              ["git", "remote", "add", "upstream", repo_url],
+              cwd=repo_root,
+              check=True,
+          )
+
+          # ============================================================
+          # Fetch latest upstream/master
+          # ============================================================
+
+          print("\nFetching upstream master...")
+
+          fetch_res = run(
+              ["git", "fetch", "upstream", "master", "--depth=1"],
+              cwd=repo_root,
+          )
+
+          if fetch_res.returncode != 0:
+              print("Shallow fetch failed, retrying full fetch...")
+
+              fetch_res = run(
+                  ["git", "fetch", "upstream", "master"],
+                  cwd=repo_root,
+              )
+
+          if fetch_res.returncode != 0:
+              print(
+                  "::error::Failed to fetch upstream/master "
+                  "even after retry"
+              )
+              sys.exit(1)
+
+          upstream_commit_res = run(
+              ["git", "rev-parse", "upstream/master"],
+              cwd=repo_root,
+              check=True,
+          )
+
+          upstream_commit = upstream_commit_res.stdout.strip()
+
+          print(f"\n✅ Upstream HEAD: {upstream_commit}")
+
+          # ============================================================
+          # Find patches
+          # ============================================================
+
+          patch_files = sorted(
+              [
+                  Path(p)
+                  for p in (
+                      glob.glob("patch/*.patch")
+                      + glob.glob("patch/*.diff")
+                  )
+              ]
+          )
+
+          if not patch_files:
+              print("\nNo patches found in patch/ directory.")
               sys.exit(0)
 
-          for patch_path in patches:
-              print(f"\n----------------------------------------\nChecking patch: {patch_path}")
-              check_res = run(f"git apply --check --directory=. {patch_path}")
-              if check_res.returncode == 0:
-                  print(f"✅ Clean: {patch_path}")
-                  continue
+          print("\nPatches:")
+          for patch_file in patch_files:
+              print(f"  - {patch_file}")
 
-              print(f"❌ Conflict detected in {patch_path}!")
-              with open(patch_path, "r", encoding="utf-8", errors="ignore") as f:
-                  orig_patch = f.read()
+          # ============================================================
+          # Create clean temporary worktree from upstream/master
+          #
+          # IMPORTANT:
+          # The patch must be checked against upstream/master,
+          # NOT against self/master.
+          # ============================================================
 
-              target_files = set()
-              for line in orig_patch.splitlines():
-                  if line.startswith("--- a/") or line.startswith("+++ b/"):
-                      path = line[6:].strip()
-                      if path and path != "/dev/null":
-                          target_files.add(path)
+          temp_root = Path(
+              tempfile.mkdtemp(prefix="upstream-patch-check-")
+          )
 
-              sources = {}
-              for tf in target_files:
-                  show_res = run(f"git show upstream/master:{tf}")
-                  sources[tf] = show_res.stdout if show_res.returncode == 0 else "(File missing in upstream)"
+          worktree_dir = temp_root / "upstream"
 
-              prompt = f"You are an expert Git engineer. A patch file failed to apply to upstream master.\n\n### Patch File ({patch_path}):\n{BT}diff\n{orig_patch}\n{BT}\n\n### Error:\n{check_res.stderr}\n\n### Upstream Files:\n"
-              for tf, content in sources.items():
-                  prompt += f"\n#### File: {tf}\n{BT}csharp\n{content}\n{BT}\n"
+          worktree_created = False
 
-              prompt += "\n### Instructions:\n1. Reconstruct an UPDATED unified diff that applies to the latest upstream.\n2. Output ONLY the patch block.\n"
+          try:
+              print("\nCreating clean upstream worktree...")
 
-              print(f"Calling Gemini for {patch_path}...")
-              response = client.models.generate_content(
-                  model="gemini-3.7-flash",
-                  contents=prompt,
-                  config=types.GenerateContentConfig(thinking_config=types.ThinkingConfig(thinking_budget=2048))
+              run(
+                  [
+                      "git",
+                      "worktree",
+                      "add",
+                      "--detach",
+                      str(worktree_dir),
+                      "upstream/master",
+                  ],
+                  cwd=repo_root,
+                  check=True,
               )
-              
-              match = re.search(r"```(?:diff|patch)?\n(.*?)\n```", response.text, re.DOTALL)
-              if match:
-                  with open(patch_path, "w", encoding="utf-8") as f:
-                      f.write(match.group(1).strip() + "\n")
-                  print(f"✨ Repaired {patch_path}")
+
+              worktree_created = True
+
+              # Make sure the temporary worktree really is clean.
+              status = run(
+                  ["git", "status", "--porcelain"],
+                  cwd=worktree_dir,
+                  check=True,
+              )
+
+              if status.stdout.strip():
+                  print(
+                      "::error::Temporary upstream worktree "
+                      "is not clean"
+                  )
+                  sys.exit(1)
+
+              print(
+                  f"✅ Clean upstream worktree ready: "
+                  f"{worktree_dir}"
+              )
+
+              # ==========================================================
+              # Parse files referenced by a unified diff
+              # ==========================================================
+
+              def get_target_files(patch_text):
+                  files = set()
+
+                  for line in patch_text.splitlines():
+
+                      if line.startswith("--- a/"):
+                          path = line[6:].strip()
+
+                          if path != "/dev/null":
+                              files.add(path)
+
+                      elif line.startswith("+++ b/"):
+                          path = line[6:].strip()
+
+                          if path != "/dev/null":
+                              files.add(path)
+
+                  return sorted(files)
+
+              # ==========================================================
+              # Check patch against clean upstream worktree
+              # ==========================================================
+
+              def check_patch(patch_path):
+                  return run(
+                      [
+                          "git",
+                          "apply",
+                          "--check",
+                          "--recount",
+                          str(Path(patch_path).resolve()),
+                      ],
+                      cwd=worktree_dir,
+                  )
+
+              # ==========================================================
+              # Get latest upstream file content
+              # ==========================================================
+
+              def get_upstream_file(path):
+                  result = run(
+                      [
+                          "git",
+                          "show",
+                          f"upstream/master:{path}",
+                      ],
+                      cwd=repo_root,
+                  )
+
+                  if result.returncode != 0:
+                      return "(File missing in upstream)"
+
+                  return result.stdout
+
+              # ==========================================================
+              # Process patches
+              # ==========================================================
+
+              repaired_count = 0
+              conflict_count = 0
+
+              for patch_path in patch_files:
+
+                  print("\n" + "=" * 72)
+                  print(f"Checking patch: {patch_path}")
+                  print("=" * 72)
+
+                  try:
+                      original_patch = patch_path.read_text(
+                          encoding="utf-8",
+                          errors="ignore",
+                      )
+                  except Exception as exc:
+                      print(
+                          f"::error::Failed to read "
+                          f"{patch_path}: {exc}"
+                      )
+                      continue
+
+                  # ------------------------------------------------------
+                  # STEP 1:
+                  # Check ORIGINAL patch against upstream/master
+                  # ------------------------------------------------------
+
+                  check_res = check_patch(patch_path)
+
+                  if check_res.returncode == 0:
+                      print(
+                          f"✅ Clean against upstream/master: "
+                          f"{patch_path}"
+                      )
+                      continue
+
+                  conflict_count += 1
+
+                  print(
+                      f"❌ Conflict detected against upstream/master: "
+                      f"{patch_path}"
+                  )
+
+                  # ------------------------------------------------------
+                  # STEP 2:
+                  # Extract affected files
+                  # ------------------------------------------------------
+
+                  target_files = get_target_files(original_patch)
+
+                  if not target_files:
+                      print(
+                          f"::error::Could not detect target files "
+                          f"in {patch_path}"
+                      )
+                      continue
+
+                  print("Affected files:")
+                  for target_file in target_files:
+                      print(f"  - {target_file}")
+
+                  # ------------------------------------------------------
+                  # STEP 3:
+                  # Collect latest upstream files
+                  # ------------------------------------------------------
+
+                  sources = {}
+
+                  for target_file in target_files:
+                      sources[target_file] = get_upstream_file(
+                          target_file
+                      )
+
+                  # ------------------------------------------------------
+                  # STEP 4:
+                  # Build Gemini prompt
+                  # ------------------------------------------------------
+
+                  prompt = f"""
+          You are an expert Git engineer.
+
+          A unified diff patch failed to apply to the latest
+          upstream/master branch of the v2rayN repository.
+
+          Upstream commit:
+          {upstream_commit}
+
+          Patch file:
+          {patch_path}
+
+          Original patch:
+          ```diff
+          {original_patch}
+          ```
+
+          git apply --check error:
+          ```text
+          {check_res.stderr}
+          ```
+
+          Relevant files from latest upstream/master:
+          """
+
+                  for target_file, content in sources.items():
+                      prompt += f"""
+
+          ------------------------------------------------------------
+          File: {target_file}
+          ------------------------------------------------------------
+
+          ```text
+          {content}
+          ```
+          """
+
+                  prompt += """
+
+          Instructions:
+
+          1. Reconstruct an UPDATED unified diff that applies cleanly
+             to the latest upstream/master.
+          2. Preserve the original intent of the patch.
+          3. Do NOT introduce unrelated changes.
+          4. Do NOT modify files unrelated to the original patch.
+          5. Make sure the resulting unified diff is syntactically valid.
+          6. Output ONLY the unified diff inside a diff code block.
+          7. Do not provide explanations outside the diff.
+          """
+
+                  # ------------------------------------------------------
+                  # STEP 5:
+                  # Call Gemini ONLY because Git check failed
+                  # ------------------------------------------------------
+
+                  print(
+                      f"\n🤖 Calling Gemini for {patch_path}..."
+                  )
+
+                  try:
+                      response = client.models.generate_content(
+                          model="gemini-3.7-flash",
+                          contents=prompt,
+                          config=types.GenerateContentConfig(
+                              thinking_config=types.ThinkingConfig(
+                                  thinking_budget=2048
+                              )
+                          ),
+                      )
+                  except Exception as exc:
+                      print(
+                          f"::error::Gemini API call failed for "
+                          f"{patch_path}: {exc}"
+                      )
+                      continue
+
+                  response_text = response.text or ""
+
+                  # ------------------------------------------------------
+                  # STEP 6:
+                  # Parse Gemini output
+                  # ------------------------------------------------------
+
+                  match = re.search(
+                      r"```(?:diff|patch)?\s*\n"
+                      r"(.*?)"
+                      r"\n```",
+                      response_text,
+                      re.DOTALL,
+                  )
+
+                  if not match:
+                      print(
+                          f"::error::Failed to parse Gemini patch "
+                          f"for {patch_path}"
+                      )
+
+                      print("Gemini response:")
+                      print(response_text)
+
+                      continue
+
+                  repaired_patch = match.group(1).strip() + "\n"
+
+                  # ------------------------------------------------------
+                  # STEP 7:
+                  # IMPORTANT:
+                  # Validate Gemini output BEFORE modifying real patch
+                  # ------------------------------------------------------
+
+                  candidate_path = (
+                      temp_root
+                      / f"{patch_path.name}.gemini-candidate"
+                  )
+
+                  candidate_path.write_text(
+                      repaired_patch,
+                      encoding="utf-8",
+                  )
+
+                  print(
+                      f"\nValidating Gemini-generated patch..."
+                  )
+
+                  candidate_check = check_patch(candidate_path)
+
+                  if candidate_check.returncode != 0:
+
+                      print(
+                          f"❌ Gemini repair FAILED validation: "
+                          f"{patch_path}"
+                      )
+
+                      if candidate_check.stderr:
+                          print(
+                              "\nGemini candidate error:"
+                          )
+                          print(candidate_check.stderr)
+
+                      print(
+                          "\n⚠️ Original patch was NOT modified."
+                      )
+
+                      continue
+
+                  # ------------------------------------------------------
+                  # STEP 8:
+                  # Gemini patch is proven applicable
+                  # Now and ONLY now replace original patch in
+                  # the checkout worktree.
+                  # ------------------------------------------------------
+
+                  patch_path.write_text(
+                      repaired_patch,
+                      encoding="utf-8",
+                  )
+
+                  repaired_count += 1
+
+                  print(
+                      f"✨ Successfully repaired and validated: "
+                      f"{patch_path}"
+                  )
+
+              # ==========================================================
+              # Summary
+              # ==========================================================
+
+              print("\n" + "=" * 72)
+              print("Patch check summary")
+              print("=" * 72)
+
+              print(f"Total patches : {len(patch_files)}")
+              print(f"Conflicts     : {conflict_count}")
+              print(f"Repaired      : {repaired_count}")
+
+              if conflict_count == 0:
+                  print(
+                      "\n✅ All patches apply cleanly to "
+                      "upstream/master."
+                  )
+
+              elif repaired_count == conflict_count:
+                  print(
+                      "\n✅ All detected conflicts were successfully "
+                      "repaired and validated."
+                  )
+
               else:
-                  print(f"::error::Failed to parse patch for {patch_path}")
-          '
+                  print(
+                      "\n⚠️ Some patches could not be automatically "
+                      "repaired."
+                  )
+
+          finally:
+
+              # ==========================================================
+              # Cleanup temporary worktree
+              # ==========================================================
+
+              if worktree_created:
+
+                  print(
+                      "\nRemoving temporary upstream worktree..."
+                  )
+
+                  remove_res = run(
+                      [
+                          "git",
+                          "worktree",
+                          "remove",
+                          "--force",
+                          str(worktree_dir),
+                      ],
+                      cwd=repo_root,
+                  )
+
+                  if remove_res.returncode != 0:
+                      print(
+                          "::warning::Failed to remove temporary "
+                          "git worktree"
+                      )
+
+              shutil.rmtree(
+                  temp_root,
+                  ignore_errors=True,
+              )
+
+          PY
+
+      - name: Show Changes
+        run: |
+          echo "Changed files:"
+          git status --short
+
+          echo
+          echo "Diff:"
+          git diff -- patch/
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v7
@@ -130,5 +637,21 @@ jobs:
           token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
           commit-message: "fix(patch): auto-heal patch conflicts"
           title: "🀫 [Auto-Fix] 自动修复 Patch 冲突"
+          body: |
+            ## 🀫 Auto-Healed Patch Conflicts
+
+            This PR was automatically generated after detecting
+            patch conflicts against the latest `upstream/master`.
+
+            ### Validation flow
+
+            1. Fetch latest `upstream/master`
+            2. Check each patch with `git apply --check`
+            3. Call Gemini only when the original patch fails
+            4. Validate the Gemini-generated patch again with `git apply --check`
+            5. Only validated repairs are included in this PR
+
+            Unvalidated Gemini output is discarded and does not modify
+            the original patch.
           branch: "auto-fix/patch-conflicts"
           delete-branch: true
