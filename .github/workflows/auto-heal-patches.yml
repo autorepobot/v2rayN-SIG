@@ -1,9 +1,8 @@
-name: 🀫 Sync Upstream & Auto-Heal Patches
+name: "🀫 Sync Upstream & Auto-Heal Patches"
 
-on:
+"on":
   schedule:
     - cron: "0 3 * * *"
-
   workflow_dispatch:
     inputs:
       force_run:
@@ -21,18 +20,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout self repo
+      - name: "Checkout self repo"
         uses: actions/checkout@v4
         with:
           ref: master
           fetch-depth: 0
           token: ${{ secrets.PAT_TOKEN || github.token }}
 
-      - name: Check and Repair Patches
+      - name: "Check and Repair Patches"
+        shell: bash
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          FORCE_RUN: ${{ inputs.force_run || 'true' }}
-        shell: bash
         run: |
           set -euo pipefail
 
@@ -57,12 +55,17 @@ jobs:
           git fetch upstream master --depth=1
 
           UPSTREAM_COMMIT="$(git rev-parse upstream/master)"
+
           echo "Upstream HEAD: $UPSTREAM_COMMIT"
 
-          if [ "${FORCE_RUN:-true}" != "true" ]; then
-            echo
-            echo "force_run=false, skipping patch check."
-            exit 0
+          if [ "${GITHUB_EVENT_NAME:-}" = "workflow_dispatch" ]; then
+            FORCE_RUN="$(jq -r '.inputs.force_run // true' "$GITHUB_EVENT_PATH")"
+
+            if [ "$FORCE_RUN" != "true" ]; then
+              echo
+              echo "force_run=false, skipping patch check."
+              exit 0
+            fi
           fi
 
           PATCHES=()
@@ -127,8 +130,7 @@ jobs:
             CONFLICTS=$((CONFLICTS + 1))
 
             ERROR="$(
-              git -C "$WORKTREE" apply --check --recount \
-                "$PATCH_ABS" 2>&1 || true
+              git -C "$WORKTREE" apply --check --recount "$PATCH_ABS" 2>&1 || true
             )"
 
             echo
@@ -162,64 +164,51 @@ jobs:
               [ -z "$FILE" ] && continue
 
               if CONTENT="$(git show "upstream/master:$FILE" 2>/dev/null)"; then
-                CONTEXT="${CONTEXT}
-### File: $FILE
-\`\`\`
-$CONTENT
-\`\`\`
-"
+                CONTEXT="${CONTEXT}"$'\n'
+                CONTEXT="${CONTEXT}### File: ${FILE}"$'\n'
+                CONTEXT="${CONTEXT}"'```'"$'\n'
+                CONTEXT="${CONTEXT}${CONTENT}"$'\n'
+                CONTEXT="${CONTEXT}"'```'"$'\n'
               else
-                CONTEXT="${CONTEXT}
-### File: $FILE
-(File missing in upstream)
-"
+                CONTEXT="${CONTEXT}"$'\n'
+                CONTEXT="${CONTEXT}### File: ${FILE}"$'\n'
+                CONTEXT="${CONTEXT}(File missing in upstream)"$'\n'
               fi
             done <<< "$FILES"
 
             PATCH_CONTENT="$(cat "$PATCH")"
 
-            PROMPT="$(cat <<EOF
-You are an expert Git engineer.
-
-A unified diff patch failed to apply to the latest upstream/master
-of the v2rayN repository.
-
-Your task is to repair the patch while preserving its original intent.
-
-Upstream commit:
-$UPSTREAM_COMMIT
-
-Patch file:
-$PATCH
-
-Original patch:
-\`\`\`diff
-$PATCH_CONTENT
-\`\`\`
-
-git apply --check error:
-\`\`\`
-$ERROR
-\`\`\`
-
-Relevant files from latest upstream/master:
-$CONTEXT
-
-Instructions:
-
-1. Reconstruct an updated unified diff that applies cleanly to the latest upstream/master.
-2. Preserve the original intent of the patch exactly.
-3. Do not introduce unrelated changes.
-4. Do not modify files that are unrelated to the original patch.
-5. Do not invent APIs, classes, methods, or configuration.
-6. Use the latest upstream file contents as the source of truth.
-7. The result must be a valid unified diff.
-8. The result must be directly consumable by git apply.
-9. Output ONLY the unified diff.
-10. Do not wrap the result in Markdown code fences.
-11. Do not add explanations or comments outside the diff.
-            EOF
-            )"
+            PROMPT=""
+            PROMPT+="You are an expert Git engineer."$'\n\n'
+            PROMPT+="A unified diff patch failed to apply to the latest upstream/master"$'\n'
+            PROMPT+="of the v2rayN repository."$'\n\n'
+            PROMPT+="Your task is to repair the patch while preserving its original intent."$'\n\n'
+            PROMPT+="Upstream commit:"$'\n'
+            PROMPT+="${UPSTREAM_COMMIT}"$'\n\n'
+            PROMPT+="Patch file:"$'\n'
+            PROMPT+="${PATCH}"$'\n\n'
+            PROMPT+="Original patch:"$'\n'
+            PROMPT+='```diff'"$'\n'
+            PROMPT+="${PATCH_CONTENT}"$'\n'
+            PROMPT+='```'"$'\n\n'
+            PROMPT+="git apply --check error:"$'\n'
+            PROMPT+='```'"$'\n'
+            PROMPT+="${ERROR}"$'\n'
+            PROMPT+='```'"$'\n\n'
+            PROMPT+="Relevant files from latest upstream/master:"$'\n'
+            PROMPT+="${CONTEXT}"$'\n'
+            PROMPT+="Instructions:"$'\n\n'
+            PROMPT+="1. Reconstruct an updated unified diff that applies cleanly to the latest upstream/master."$'\n'
+            PROMPT+="2. Preserve the original intent of the patch exactly."$'\n'
+            PROMPT+="3. Do not introduce unrelated changes."$'\n'
+            PROMPT+="4. Do not modify files that are unrelated to the original patch."$'\n'
+            PROMPT+="5. Do not invent APIs, classes, methods, or configuration."$'\n'
+            PROMPT+="6. Use the latest upstream file contents as the source of truth."$'\n'
+            PROMPT+="7. The result must be a valid unified diff."$'\n'
+            PROMPT+="8. The result must be directly consumable by git apply."$'\n'
+            PROMPT+="9. Output ONLY the unified diff."$'\n'
+            PROMPT+="10. Do not wrap the result in Markdown code fences."$'\n'
+            PROMPT+="11. Do not add explanations or comments outside the diff."
 
             echo
             echo "🤖 Calling Gemini..."
@@ -255,7 +244,6 @@ Instructions:
               -H "Content-Type: application/json" \
               -d "$REQUEST" \
               > "$RESPONSE_FILE"; then
-
               echo "::error::Gemini API request failed"
               FAILED=$((FAILED + 1))
               continue
@@ -286,8 +274,9 @@ Instructions:
 
             TEXT="$(
               jq -r '
-                .candidates[0].content.parts
-                | map(select(.text != null) | .text)
+                [
+                  .candidates[0].content.parts[]?.text
+                ]
                 | join("")
               ' "$RESPONSE_FILE"
             )"
@@ -332,9 +321,7 @@ Instructions:
               continue
             fi
 
-            if ! printf '%s\n' "$REPAIRED_PATCH" |
-              grep -qE '^(--- |\+\+\+ )'; then
-
+            if ! printf '%s\n' "$REPAIRED_PATCH" | grep -qE '^(--- |\+\+\+ )'; then
               echo "::error::Gemini output does not look like a unified diff"
               echo
               echo "$REPAIRED_PATCH"
@@ -354,7 +341,6 @@ Instructions:
             if VALIDATION_ERROR="$(
               git -C "$WORKTREE" apply --check --recount "$CANDIDATE" 2>&1
             )"; then
-
               echo "✅ Gemini patch applies cleanly."
 
               if ! git -C "$WORKTREE" apply \
@@ -397,7 +383,6 @@ Instructions:
                 "$VALIDATION_WORKTREE" \
                 2>/dev/null || true
             else
-
               echo "❌ Gemini repair failed validation:"
               echo "$VALIDATION_ERROR"
               echo "⚠️ Original patch was left untouched."
@@ -448,7 +433,7 @@ Instructions:
             echo "⚠️ Some patches could not be automatically repaired."
           fi
 
-      - name: Show Changes
+      - name: "Show Changes"
         shell: bash
         run: |
           echo "========================================"
@@ -464,7 +449,7 @@ Instructions:
 
           git diff -- patch/
 
-      - name: Validate Changes
+      - name: "Validate Changes"
         shell: bash
         run: |
           set -euo pipefail
@@ -481,7 +466,7 @@ Instructions:
             echo "No patch changes detected."
           fi
 
-      - name: Create Pull Request
+      - name: "Create Pull Request"
         if: ${{ success() }}
         uses: peter-evans/create-pull-request@v7
         with:
@@ -494,7 +479,7 @@ Instructions:
             This PR was generated automatically after detecting
             patch conflicts against the latest upstream/master.
 
-            ### Validation flow
+            Validation flow:
 
             1. Fetch latest upstream/master
             2. Check every local patch
