@@ -58,9 +58,11 @@ jobs:
           run("git config --global user.email actions@github.com")
           run("git config --global user.name GitHubActions")
           
-          # 安全清理并重新添加 upstream
           run("git remote remove upstream 2>/dev/null || true")
-          remote_add = run("git remote add upstream [https://github.com/2dust/v2rayN.git](https://github.com/2dust/v2rayN.git)")
+          
+          # 使用字符串拼接防止 Markdown 自动识别为超链接加括号
+          repo_url = "https://" + "[github.com/2dust/v2rayN.git](https://github.com/2dust/v2rayN.git)"
+          remote_add = run(f"git remote add upstream {repo_url}")
           if remote_add.returncode != 0:
               sys.exit(1)
 
