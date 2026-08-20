@@ -1,0 +1,115 @@
+name: 🀫 Update SPEC Versions
+
+on:
+  workflow_dispatch:
+    inputs:
+      update_v2rayn:
+        description: '更新 v2rayN'
+        type: boolean
+        default: false
+      v2rayn_version:
+        description: 'v2rayN 版本号 (留空自动获取最新 Release)'
+        required: false
+        default: ''
+
+      update_singbox:
+        description: '更新 sing-box'
+        type: boolean
+        default: false
+      singbox_version:
+        description: 'sing-box 版本号 (留空自动获取最新 Release)'
+        required: false
+        default: ''
+
+      update_xray:
+        description: '更新 Xray'
+        type: boolean
+        default: false
+      xray_version:
+        description: 'Xray 版本号 (留空自动获取最新 Release)'
+        required: false
+        default: ''
+
+jobs:
+  update-spec:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Update RPM Spec File
+        run: |
+          # 自动查找 spec 文件
+          SPEC_FILE=$(find . -maxdepth 2 -name "*.spec" | head -n 1)
+          if [ -z "$SPEC_FILE" ]; then
+            echo "Error: 未找到 .spec 文件！"
+            exit 1
+          fi
+          echo "发现 Spec 文件: $SPEC_FILE"
+
+          UTC_DATE=$(LC_ALL=C date -u "+%a %b %d %Y")
+
+          # ================= 1. 处理 v2rayN =================
+          if [ "${{ github.event.inputs.update_v2rayn }}" = "true" ]; then
+            V2RAYN_VER="${{ github.event.inputs.v2rayn_version }}"
+            if [ -z "$V2RAYN_VER" ]; then
+              V2RAYN_VER=$(curl -s https://api.github.com/repos/2dust/v2rayN/releases/latest | jq -r '.tag_name // empty')
+            fi
+            V2RAYN_VER="${V2RAYN_VER#v}"
+            echo "正在更新 v2rayN -> $V2RAYN_VER"
+
+            # 修改 Version 字段
+            sed -i -E "s/^(Version:[[:space:]]*).*/\1${V2RAYN_VER}/" "$SPEC_FILE"
+
+            # 修改 Changelog 第一行的日期和版本号
+            sed -i -E "s/^\* [A-Za-z]{3} [A-Za-z]{3} [0-9]{1,2} [0-9]{4} (.* - )[0-9.]+-1/* ${UTC_DATE} \1${V2RAYN_VER}-1/" "$SPEC_FILE"
+          else
+            echo "跳过 v2rayN 更新"
+            # 若没勾选 v2rayN，但勾选了其他项目，仅刷新 Changelog 顶部的 UTC 日期
+            if [ "${{ github.event.inputs.update_singbox }}" = "true" ] || [ "${{ github.event.inputs.update_xray }}" = "true" ]; then
+              sed -i -E "s/^\* [A-Za-z]{3} [A-Za-z]{3} [0-9]{1,2} [0-9]{4}/* ${UTC_DATE}/" "$SPEC_FILE"
+            fi
+          fi
+
+          # ================= 2. 处理 sing-box =================
+          if [ "${{ github.event.inputs.update_singbox }}" = "true" ]; then
+            SINGBOX_VER="${{ github.event.inputs.singbox_version }}"
+            if [ -z "$SINGBOX_VER" ]; then
+              SINGBOX_VER=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r '.tag_name // empty')
+            fi
+            SINGBOX_VER="${SINGBOX_VER#v}"
+            echo "正在更新 sing-box -> $SINGBOX_VER"
+
+            sed -i -E "s#(sing-box/releases/download/)v[0-9.]+(/sing-box-)[0-9.]+#\1v${SINGBOX_VER}\2${SINGBOX_VER}#g" "$SPEC_FILE"
+          else
+            echo "跳过 sing-box 更新"
+          fi
+
+          # ================= 3. 处理 Xray =================
+          if [ "${{ github.event.inputs.update_xray }}" = "true" ]; then
+            XRAY_VER="${{ github.event.inputs.xray_version }}"
+            if [ -z "$XRAY_VER" ]; then
+              XRAY_VER=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases/latest | jq -r '.tag_name // empty')
+            fi
+            XRAY_VER="${XRAY_VER#v}"
+            echo "正在更新 Xray -> $XRAY_VER"
+
+            sed -i -E "s#(Xray-core/releases/download/)v[0-9.]+(/Xray-)#\1v${XRAY_VER}\2#g" "$SPEC_FILE"
+          else
+            echo "跳过 Xray 更新"
+          fi
+
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          if git diff --staged --quiet; then
+            echo "没有修改任何内容，跳过提交。"
+          else
+            git commit -m "chore: update spec file versions"
+            git push
+          fi
