@@ -125,9 +125,7 @@ $CONTENT
 (File missing in upstream)
 "
               fi
-            done <<EOF
-          $FILES
-          EOF
+            done <<< "$FILES"
 
             PATCH_CONTENT="$(cat "$PATCH")"
 
