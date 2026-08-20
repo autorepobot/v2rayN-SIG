@@ -34,23 +34,14 @@ jobs:
         run: |
           set -euo pipefail
 
-          # ------------------------------------------------------------
-          # Check API key
-          # ------------------------------------------------------------
           if [[ -z "${GEMINI_API_KEY:-}" ]]; then
             echo "::error::GEMINI_API_KEY is not configured"
             exit 1
           fi
 
-          # ------------------------------------------------------------
-          # Git config
-          # ------------------------------------------------------------
           git config user.email "actions@github.com"
           git config user.name "GitHubActions"
 
-          # ------------------------------------------------------------
-          # Upstream
-          # ------------------------------------------------------------
           git remote remove upstream 2>/dev/null || true
           git remote add upstream https://github.com/2dust/v2rayN.git
 
@@ -60,9 +51,6 @@ jobs:
           UPSTREAM_COMMIT="$(git rev-parse upstream/master)"
           echo "Upstream HEAD: $UPSTREAM_COMMIT"
 
-          # ------------------------------------------------------------
-          # Find patches
-          # ------------------------------------------------------------
           shopt -s nullglob
           PATCHES=(patch/*.patch patch/*.diff)
           shopt -u nullglob
@@ -72,9 +60,6 @@ jobs:
             exit 0
           fi
 
-          # ------------------------------------------------------------
-          # Create clean worktree from upstream/master
-          # ------------------------------------------------------------
           TMP_DIR="$(mktemp -d)"
           WORKTREE="$TMP_DIR/upstream"
 
@@ -85,30 +70,15 @@ jobs:
 
           trap cleanup EXIT
 
-          echo "Creating clean upstream worktree..."
           git worktree add --detach "$WORKTREE" upstream/master
-
-          if [[ -n "$(git -C "$WORKTREE" status --porcelain)" ]]; then
-            echo "::error::Temporary upstream worktree is not clean"
-            exit 1
-          fi
 
           REPAIRED=0
           CONFLICTS=0
 
-          # ------------------------------------------------------------
-          # Process patches
-          # ------------------------------------------------------------
           for PATCH in "${PATCHES[@]}"; do
             echo
-            echo "============================================================"
             echo "Checking: $PATCH"
-            echo "============================================================"
 
-            # ----------------------------------------------------------
-            # IMPORTANT:
-            # Check against upstream/master, NOT self/master
-            # ----------------------------------------------------------
             if git -C "$WORKTREE" apply --check --recount "$GITHUB_WORKSPACE/$PATCH"; then
               echo "✅ Clean: $PATCH"
               continue
@@ -116,14 +86,14 @@ jobs:
 
             CONFLICTS=$((CONFLICTS + 1))
 
-            ERROR="$(git -C "$WORKTREE" apply --check --recount "$GITHUB_WORKSPACE/$PATCH" 2>&1 || true)"
+            ERROR="$(
+              git -C "$WORKTREE" apply --check --recount \
+                "$GITHUB_WORKSPACE/$PATCH" 2>&1 || true
+            )"
 
             echo "❌ Conflict detected:"
             echo "$ERROR"
 
-            # ----------------------------------------------------------
-            # Collect affected files
-            # ----------------------------------------------------------
             FILES="$(
               grep -E '^(--- a/|\+\+\+ b/)' "$PATCH" |
               sed -E 's#^(--- a/|\+\+\+ b/)##' |
@@ -136,15 +106,10 @@ jobs:
               continue
             fi
 
-            # ----------------------------------------------------------
-            # Build upstream source context
-            # ----------------------------------------------------------
             CONTEXT=""
 
             while IFS= read -r FILE; do
               [[ -z "$FILE" ]] && continue
-
-              echo "Loading upstream: $FILE"
 
               if CONTENT="$(git show "upstream/master:$FILE" 2>/dev/null)"; then
                 CONTEXT+="
@@ -161,9 +126,6 @@ $CONTENT
               fi
             done <<< "$FILES"
 
-            # ----------------------------------------------------------
-            # Build Gemini prompt
-            # ----------------------------------------------------------
             PATCH_CONTENT="$(cat "$PATCH")"
 
             PROMPT="$(cat <<EOF
@@ -199,9 +161,6 @@ Instructions:
 EOF
 )"
 
-            # ----------------------------------------------------------
-            # Call Gemini
-            # ----------------------------------------------------------
             echo "🤖 Calling Gemini..."
 
             REQUEST="$(
@@ -228,9 +187,6 @@ EOF
                 -d "$REQUEST"
             )"
 
-            # ----------------------------------------------------------
-            # Extract Gemini text
-            # ----------------------------------------------------------
             TEXT="$(
               jq -r '.candidates[0].content.parts[0].text // empty' \
                 <<< "$RESPONSE"
@@ -242,29 +198,22 @@ EOF
               continue
             fi
 
-            # ----------------------------------------------------------
-            # Extract diff from markdown code block
-            # ----------------------------------------------------------
-            REPAIRED="$(
+            REPAIRED_PATCH="$(
               printf '%s\n' "$TEXT" |
               sed -n '/^```\(diff\|patch\)\?$/,/^```$/p' |
               sed '1d;$d'
             )"
 
-            if [[ -z "$REPAIRED" ]]; then
+            if [[ -z "$REPAIRED_PATCH" ]]; then
               echo "::error::Failed to parse Gemini patch"
               echo "$TEXT"
               continue
             fi
 
-            # ----------------------------------------------------------
-            # Validate Gemini patch BEFORE touching original
-            # ----------------------------------------------------------
             CANDIDATE="$TMP_DIR/$(basename "$PATCH").gemini"
+            printf '%s\n' "$REPAIRED_PATCH" > "$CANDIDATE"
 
-            printf '%s\n' "$REPAIRED" > "$CANDIDATE"
-
-            echo "Validating Gemini-generated patch..."
+            echo "Validating Gemini patch..."
 
             if ! VALIDATION_ERROR="$(
               git -C "$WORKTREE" apply --check --recount "$CANDIDATE" 2>&1
@@ -275,35 +224,16 @@ EOF
               continue
             fi
 
-            # ----------------------------------------------------------
-            # Only replace original AFTER validation succeeds
-            # ----------------------------------------------------------
             cp "$CANDIDATE" "$PATCH"
-
             REPAIRED=$((REPAIRED + 1))
 
             echo "✨ Repaired: $PATCH"
-
           done
 
-          # ------------------------------------------------------------
-          # Summary
-          # ------------------------------------------------------------
           echo
-          echo "============================================================"
-          echo "Summary"
-          echo "============================================================"
           echo "Total patches : ${#PATCHES[@]}"
           echo "Conflicts     : $CONFLICTS"
           echo "Repaired      : $REPAIRED"
-
-          if (( CONFLICTS == 0 )); then
-            echo "✅ All patches apply cleanly to upstream/master."
-          elif (( REPAIRED == CONFLICTS )); then
-            echo "✅ All conflicts were successfully repaired."
-          else
-            echo "⚠️ Some conflicts could not be automatically repaired."
-          fi
 
       - name: Show Changes
         run: |
@@ -318,16 +248,13 @@ EOF
           commit-message: "fix(patch): auto-heal patch conflicts"
           title: "🀫 [Auto-Fix] 自动修复 Patch 冲突"
           body: |
-            ## 🀫 Auto-Healed Patch Conflicts
-
             Automatically repaired patches that no longer apply
             cleanly to upstream/master.
 
             Validation flow:
-
-            1. Check patch against upstream/master
-            2. Call Gemini only when the check fails
-            3. Validate Gemini-generated patch
+            1. Check against upstream/master
+            2. Call Gemini only on conflict
+            3. Validate Gemini output
             4. Submit only validated repairs
           branch: "auto-fix/patch-conflicts"
           delete-branch: true
