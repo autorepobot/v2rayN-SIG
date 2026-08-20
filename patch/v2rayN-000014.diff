@@ -2,12 +2,12 @@ diff --git a/package-rhel-loong.sh b/package-rhel-loong.sh
 index fb6171fa7d..a0222ab3c2 100644
 --- a/package-rhel-loong.sh
 +++ b/package-rhel-loong.sh
-@@ -12,8 +12,8 @@ MIN_KERNEL="6.12"
+@@ -11,9 +11,9 @@ MIN_KERNEL="6.12"
  PKGROOT="v2rayN-publish"
  PROJECT_HINT="v2rayN.Desktop/v2rayN.Desktop.csproj"
  RPM_TOPDIR="${HOME}/rpmbuild"
--DOTNET_LOONGARCH_VERSION="10.0.110"
--DOTNET_LOONGARCH_TAG="v10.0.110-loongarch64"
+-DOTNET_LOONGARCH_VERSION="10.0.111"
+-DOTNET_LOONGARCH_TAG="v10.0.111-loongarch64"
 +DOTNET_LOONGARCH_VERSION="10.0.111"
 +DOTNET_LOONGARCH_TAG="v10.0.111-loongarch64"
  DOTNET_LOONGARCH_BASE="https://github.com/loongson/dotnet/releases/download"
