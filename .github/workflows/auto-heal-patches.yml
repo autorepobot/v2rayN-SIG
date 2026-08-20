@@ -1,8 +1,8 @@
 name: 🀫 Sync Upstream & Auto-Heal Patches
 on:
   schedule:
-    - cron: '0 3 * * *' # 每天 UTC 03:00 (北京时间 11:00) 自动检查
-  workflow_dispatch:      # 手动触发入口
+    - cron: '0 3 * * *'
+  workflow_dispatch:
     inputs:
       force_run:
         description: '是否强制运行补丁检测与 Gemini 自愈'
@@ -39,11 +39,8 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          cat << 'EOF' > heal.py
-          import os
-          import re
-          import glob
-          import subprocess
+          python -c '
+          import os, re, glob, subprocess
           from google import genai
           from google.genai import types
 
@@ -53,19 +50,17 @@ jobs:
               exit(1)
 
           client = genai.Client(api_key=api_key)
-          BT = "```"  # 防止 Markdown 嵌套解析爆版
+          BT = "```"
 
           def run(cmd):
               return subprocess.run(cmd, shell=True, capture_output=True, text=True)
 
-          # 1. Fetch upstream 2dust/v2rayN master
-          run("git remote add upstream https://github.com/2dust/v2rayN.git 2>/dev/null || git remote set-url upstream https://github.com/2dust/v2rayN.git")
+          run("git remote add upstream [https://github.com/2dust/v2rayN.git](https://github.com/2dust/v2rayN.git) 2>/dev/null || git remote set-url upstream [https://github.com/2dust/v2rayN.git](https://github.com/2dust/v2rayN.git)")
           print("Fetching upstream master...")
           if run("git fetch upstream master").returncode != 0:
               print("::error::Failed to fetch upstream master")
               exit(1)
 
-          # 2. 检索 patch/ 目录下的所有补丁文件
           patches = sorted(glob.glob("patch/*.patch") + glob.glob("patch/*.diff"))
           if not patches:
               print("No patches found in patch/ directory.")
@@ -74,21 +69,16 @@ jobs:
           repaired_patches = []
 
           for patch_path in patches:
-              print(f"\n----------------------------------------")
-              print(f"Checking patch: {patch_path}")
-
-              # 测试补丁能否无冲突应用
+              print(f"\n----------------------------------------\nChecking patch: {patch_path}")
               check_res = run(f"git apply --check --directory=. {patch_path}")
               if check_res.returncode == 0:
                   print(f"✅ Clean: {patch_path}")
                   continue
 
               print(f"❌ Conflict detected in {patch_path}!")
-              
               with open(patch_path, "r", encoding="utf-8", errors="ignore") as f:
                   orig_patch = f.read()
 
-              # 解析补丁修改的目标源码文件
               target_files = set()
               for line in orig_patch.splitlines():
                   if line.startswith("--- a/") or line.startswith("+++ b/"):
@@ -96,36 +86,16 @@ jobs:
                       if path and path != "/dev/null":
                           target_files.add(path)
 
-              # 读取 upstream/master 中对应文件的最新完整源码 (不做截断)
               sources = {}
               for tf in target_files:
                   show_res = run(f"git show upstream/master:{tf}")
                   sources[tf] = show_res.stdout if show_res.returncode == 0 else "(File missing in upstream)"
 
-              # 构建提示词
-              prompt = f"""You are an expert Git engineer specialized in C# and Linux packaging patches.
-A patch file failed to apply cleanly to the latest upstream master branch of v2rayN.
-
-### Target Patch File ({patch_path}):
-{BT}diff
-{orig_patch}
-{BT}
-
-### Git Apply Error Details:
-{check_res.stderr}
-
-### Upstream Master Target Source Files:
-"""
+              prompt = f"You are an expert Git engineer specialized in C# and Linux packaging patches.\nA patch file failed to apply cleanly to the latest upstream master branch of v2rayN.\n\n### Target Patch File ({patch_path}):\n{BT}diff\n{orig_patch}\n{BT}\n\n### Git Apply Error Details:\n{check_res.stderr}\n\n### Upstream Master Target Source Files:\n"
               for tf, content in sources.items():
                   prompt += f"\n#### Source File: {tf}\n{BT}csharp\n{content}\n{BT}\n"
 
-              prompt += f"""
-### Task Instructions:
-1. Analyze the original patch's functional intent, the conflict errors, and the latest upstream code.
-2. Reconstruct an UPDATED unified diff (.patch) that seamlessly applies the exact same intended modifications to the latest upstream code.
-3. Keep unified diff formatting strict with standard `a/` and `b/` prefixes.
-4. Output ONLY the raw updated patch content enclosed in a single {BT}diff ... {BT} block. Do not add conversational text outside the block.
-"""
+              prompt += f"\n### Task Instructions:\n1. Analyze the original patch functional intent, the conflict errors, and the latest upstream code.\n2. Reconstruct an UPDATED unified diff (.patch) that seamlessly applies the exact same intended modifications to the latest upstream code.\n3. Keep unified diff formatting strict with standard `a/` and `b/` prefixes.\n4. Output ONLY the raw updated patch content enclosed in a single {BT}diff ... {BT} block. Do not add conversational text outside the block.\n"
 
               print(f"Calling Gemini 3.7 Flash (with thinking) for {patch_path}...")
               try:
@@ -139,7 +109,6 @@ A patch file failed to apply cleanly to the latest upstream master branch of v2r
                   match = re.search(r"```(?:diff|patch)?\n(.*?)\n```", response.text, re.DOTALL)
                   new_patch = (match.group(1).strip() if match else response.text.strip()) + "\n"
 
-                  # 将消解冲突后的 Patch 写回原文件
                   with open(patch_path, "w", encoding="utf-8") as f:
                       f.write(new_patch)
 
@@ -149,9 +118,7 @@ A patch file failed to apply cleanly to the latest upstream master branch of v2r
                   print(f"::error::Gemini API call failed for {patch_path}: {e}")
 
           print(f"\nAll checks done. Repaired patches: {repaired_patches}")
-          EOF
-
-          python heal.py
+          '
 
       - name: Create Pull Request if patches were repaired
         uses: peter-evans/create-pull-request@v7
