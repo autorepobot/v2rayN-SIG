@@ -18,7 +18,7 @@ jobs:
   check-and-heal-patches:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout self repo (master)
+      - name: Checkout self repo
         uses: actions/checkout@v7
         with:
           ref: master
@@ -40,33 +40,39 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           python -c '
-          import os, re, glob, subprocess
+          import os, re, glob, subprocess, sys
           from google import genai
           from google.genai import types
 
           api_key = os.environ.get("GEMINI_API_KEY")
-          if not api_key:
-              print("::error::GEMINI_API_KEY secret is missing!")
-              exit(1)
-
           client = genai.Client(api_key=api_key)
           BT = "```"
 
           def run(cmd):
-              return subprocess.run(cmd, shell=True, capture_output=True, text=True)
+              print(f"Running: {cmd}")
+              res = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+              if res.returncode != 0:
+                  print(f"Command failed: {cmd}\nStderr: {res.stderr}")
+              return res
 
-          run("git remote add upstream [https://github.com/2dust/v2rayN.git](https://github.com/2dust/v2rayN.git) 2>/dev/null || git remote set-url upstream [https://github.com/2dust/v2rayN.git](https://github.com/2dust/v2rayN.git)")
+          # 增强版 Fetch 逻辑：配置 git 避免 SSL 错误，使用 --depth 1 优化速度
+          run("git config --global user.email actions@github.com")
+          run("git config --global user.name GitHubActions")
+          run("git remote add upstream [https://github.com/2dust/v2rayN.git](https://github.com/2dust/v2rayN.git)")
           print("Fetching upstream master...")
-          if run("git fetch upstream master").returncode != 0:
-              print("::error::Failed to fetch upstream master")
-              exit(1)
+          
+          # 尝试 fetch，如果失败再试一次，确保不是瞬时网络问题
+          fetch_res = run("git fetch upstream master --depth 1")
+          if fetch_res.returncode != 0:
+              fetch_res = run("git fetch upstream master")
+              if fetch_res.returncode != 0:
+                  print("::error::Failed to fetch upstream master even after retry")
+                  sys.exit(1)
 
           patches = sorted(glob.glob("patch/*.patch") + glob.glob("patch/*.diff"))
           if not patches:
               print("No patches found in patch/ directory.")
-              exit(0)
-
-          repaired_patches = []
+              sys.exit(0)
 
           for patch_path in patches:
               print(f"\n----------------------------------------\nChecking patch: {patch_path}")
@@ -88,49 +94,37 @@ jobs:
 
               sources = {}
               for tf in target_files:
+                  # 从 upstream/master 读取文件
                   show_res = run(f"git show upstream/master:{tf}")
                   sources[tf] = show_res.stdout if show_res.returncode == 0 else "(File missing in upstream)"
 
-              prompt = f"You are an expert Git engineer specialized in C# and Linux packaging patches.\nA patch file failed to apply cleanly to the latest upstream master branch of v2rayN.\n\n### Target Patch File ({patch_path}):\n{BT}diff\n{orig_patch}\n{BT}\n\n### Git Apply Error Details:\n{check_res.stderr}\n\n### Upstream Master Target Source Files:\n"
+              prompt = f"You are an expert Git engineer. A patch file failed to apply to upstream master.\n\n### Patch File ({patch_path}):\n{BT}diff\n{orig_patch}\n{BT}\n\n### Error:\n{check_res.stderr}\n\n### Upstream Files:\n"
               for tf, content in sources.items():
-                  prompt += f"\n#### Source File: {tf}\n{BT}csharp\n{content}\n{BT}\n"
+                  prompt += f"\n#### File: {tf}\n{BT}csharp\n{content}\n{BT}\n"
 
-              prompt += f"\n### Task Instructions:\n1. Analyze the original patch functional intent, the conflict errors, and the latest upstream code.\n2. Reconstruct an UPDATED unified diff (.patch) that seamlessly applies the exact same intended modifications to the latest upstream code.\n3. Keep unified diff formatting strict with standard `a/` and `b/` prefixes.\n4. Output ONLY the raw updated patch content enclosed in a single {BT}diff ... {BT} block. Do not add conversational text outside the block.\n"
+              prompt += "\n### Instructions:\n1. Reconstruct an UPDATED unified diff that applies to the latest upstream.\n2. Output ONLY the patch block.\n"
 
-              print(f"Calling Gemini 3.7 Flash (with thinking) for {patch_path}...")
-              try:
-                  response = client.models.generate_content(
-                      model="gemini-3.7-flash",
-                      contents=prompt,
-                      config=types.GenerateContentConfig(
-                          thinking_config=types.ThinkingConfig(thinking_budget=2048)
-                      )
-                  )
-                  match = re.search(r"```(?:diff|patch)?\n(.*?)\n```", response.text, re.DOTALL)
-                  new_patch = (match.group(1).strip() if match else response.text.strip()) + "\n"
-
+              print(f"Calling Gemini for {patch_path}...")
+              response = client.models.generate_content(
+                  model="gemini-3.7-flash",
+                  contents=prompt,
+                  config=types.GenerateContentConfig(thinking_config=types.ThinkingConfig(thinking_budget=2048))
+              )
+              
+              match = re.search(r"```(?:diff|patch)?\n(.*?)\n```", response.text, re.DOTALL)
+              if match:
                   with open(patch_path, "w", encoding="utf-8") as f:
-                      f.write(new_patch)
-
-                  repaired_patches.append(patch_path)
+                      f.write(match.group(1).strip() + "\n")
                   print(f"✨ Repaired {patch_path}")
-              except Exception as e:
-                  print(f"::error::Gemini API call failed for {patch_path}: {e}")
-
-          print(f"\nAll checks done. Repaired patches: {repaired_patches}")
+              else:
+                  print(f"::error::Failed to parse patch for {patch_path}")
           '
 
-      - name: Create Pull Request if patches were repaired
+      - name: Create Pull Request
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
-          commit-message: "fix(patch): auto-heal patch conflicts with upstream master"
-          title: "🀫 [Auto-Fix] 自动修复与 2dust/v2rayN upstream/master 冲突的 Patch"
-          body: |
-            ## 🤖 Gemini 3.7 Flash Patch 自动修复报告
-
-            工作流检测到 `patch/` 目录下的补丁与 `2dust/v2rayN` 最新 master 代码存在冲突，已调用 **Gemini 3.7 Flash** 结合 upstream 最新源码自动重构补丁。
-
-            请审查此 PR 中的 `.patch` 改动，确认无误后合并入 `master`。
+          commit-message: "fix(patch): auto-heal patch conflicts"
+          title: "🀫 [Auto-Fix] 自动修复 Patch 冲突"
           branch: "auto-fix/patch-conflicts"
           delete-branch: true
