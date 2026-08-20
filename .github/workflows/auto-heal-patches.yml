@@ -34,7 +34,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [[ -z "${GEMINI_API_KEY:-}" ]]; then
+          if [ -z "${GEMINI_API_KEY:-}" ]; then
             echo "::error::GEMINI_API_KEY is not configured"
             exit 1
           fi
@@ -51,11 +51,12 @@ jobs:
           UPSTREAM_COMMIT="$(git rev-parse upstream/master)"
           echo "Upstream HEAD: $UPSTREAM_COMMIT"
 
-          shopt -s nullglob
-          PATCHES=(patch/*.patch patch/*.diff)
-          shopt -u nullglob
+          PATCHES=()
+          for file in patch/*.patch patch/*.diff; do
+            [ -f "$file" ] && PATCHES+=("$file")
+          done
 
-          if (( ${#PATCHES[@]} == 0 )); then
+          if [ "${#PATCHES[@]}" -eq 0 ]; then
             echo "No patches found."
             exit 0
           fi
@@ -72,8 +73,8 @@ jobs:
 
           git worktree add --detach "$WORKTREE" upstream/master
 
-          REPAIRED=0
           CONFLICTS=0
+          REPAIRED=0
 
           for PATCH in "${PATCHES[@]}"; do
             echo
@@ -98,10 +99,10 @@ jobs:
               grep -E '^(--- a/|\+\+\+ b/)' "$PATCH" |
               sed -E 's#^(--- a/|\+\+\+ b/)##' |
               grep -v '^/dev/null$' |
-              sort -u
+              sort -u || true
             )"
 
-            if [[ -z "$FILES" ]]; then
+            if [ -z "$FILES" ]; then
               echo "::error::Could not detect target files in $PATCH"
               continue
             fi
@@ -109,57 +110,59 @@ jobs:
             CONTEXT=""
 
             while IFS= read -r FILE; do
-              [[ -z "$FILE" ]] && continue
+              [ -z "$FILE" ] && continue
 
               if CONTENT="$(git show "upstream/master:$FILE" 2>/dev/null)"; then
-                CONTEXT+="
+                CONTEXT="$CONTEXT
 ### File: $FILE
 \`\`\`
 $CONTENT
 \`\`\`
 "
               else
-                CONTEXT+="
+                CONTEXT="$CONTEXT
 ### File: $FILE
 (File missing in upstream)
 "
               fi
-            done <<< "$FILES"
+            done <<EOF
+          $FILES
+          EOF
 
             PATCH_CONTENT="$(cat "$PATCH")"
 
             PROMPT="$(cat <<EOF
-You are an expert Git engineer.
+          You are an expert Git engineer.
 
-A unified diff patch failed to apply to the latest upstream/master
-of the v2rayN repository.
+          A unified diff patch failed to apply to the latest upstream/master
+          of the v2rayN repository.
 
-Upstream commit:
-$UPSTREAM_COMMIT
+          Upstream commit:
+          $UPSTREAM_COMMIT
 
-Patch file:
-$PATCH
+          Patch file:
+          $PATCH
 
-Original patch:
-\`\`\`diff
-$PATCH_CONTENT
-\`\`\`
+          Original patch:
+          \`\`\`diff
+          $PATCH_CONTENT
+          \`\`\`
 
-git apply --check error:
-\`\`\`
-$ERROR
-\`\`\`
+          git apply --check error:
+          \`\`\`
+          $ERROR
+          \`\`\`
 
-Relevant files from latest upstream/master:
-$CONTEXT
+          Relevant files from latest upstream/master:
+          $CONTEXT
 
-Instructions:
-1. Reconstruct an updated unified diff that applies cleanly to latest upstream/master.
-2. Preserve the original intent of the patch.
-3. Do not introduce unrelated changes.
-4. Output ONLY the unified diff.
-EOF
-)"
+          Instructions:
+          1. Reconstruct an updated unified diff that applies cleanly to latest upstream/master.
+          2. Preserve the original intent of the patch.
+          3. Do not introduce unrelated changes.
+          4. Output ONLY the unified diff.
+          EOF
+          )"
 
             echo "🤖 Calling Gemini..."
 
@@ -189,10 +192,10 @@ EOF
 
             TEXT="$(
               jq -r '.candidates[0].content.parts[0].text // empty' \
-                <<< "$RESPONSE"
+              <<< "$RESPONSE"
             )"
 
-            if [[ -z "$TEXT" ]]; then
+            if [ -z "$TEXT" ]; then
               echo "::error::Gemini returned no usable response"
               echo "$RESPONSE"
               continue
@@ -200,11 +203,11 @@ EOF
 
             REPAIRED_PATCH="$(
               printf '%s\n' "$TEXT" |
-              sed -n '/^```\(diff\|patch\)\?$/,/^```$/p' |
+              sed -n '/^```diff$/,/^```$/p' |
               sed '1d;$d'
             )"
 
-            if [[ -z "$REPAIRED_PATCH" ]]; then
+            if [ -z "$REPAIRED_PATCH" ]; then
               echo "::error::Failed to parse Gemini patch"
               echo "$TEXT"
               continue
@@ -215,19 +218,17 @@ EOF
 
             echo "Validating Gemini patch..."
 
-            if ! VALIDATION_ERROR="$(
+            if VALIDATION_ERROR="$(
               git -C "$WORKTREE" apply --check --recount "$CANDIDATE" 2>&1
             )"; then
+              cp "$CANDIDATE" "$PATCH"
+              REPAIRED=$((REPAIRED + 1))
+              echo "✨ Repaired: $PATCH"
+            else
               echo "❌ Gemini repair failed validation:"
               echo "$VALIDATION_ERROR"
               echo "⚠️ Original patch was left untouched."
-              continue
             fi
-
-            cp "$CANDIDATE" "$PATCH"
-            REPAIRED=$((REPAIRED + 1))
-
-            echo "✨ Repaired: $PATCH"
           done
 
           echo
@@ -256,5 +257,5 @@ EOF
             2. Call Gemini only on conflict
             3. Validate Gemini output
             4. Submit only validated repairs
-          branch: "auto-fix/patch-conflicts"
+          branch: auto-fix/patch-conflicts
           delete-branch: true
