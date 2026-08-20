@@ -57,7 +57,6 @@ jobs:
           git fetch upstream master --depth=1
 
           UPSTREAM_COMMIT="$(git rev-parse upstream/master)"
-
           echo "Upstream HEAD: $UPSTREAM_COMMIT"
 
           if [ "${FORCE_RUN:-true}" != "true" ]; then
@@ -311,14 +310,12 @@ Instructions:
                 sed -n '/^```diff[[:space:]]*$/,/^```[[:space:]]*$/p' |
                 sed '1d;$d'
               )"
-
             elif printf '%s\n' "$TEXT" | grep -q '^```patch[[:space:]]*$'; then
               REPAIRED_PATCH="$(
                 printf '%s\n' "$TEXT" |
                 sed -n '/^```patch[[:space:]]*$/,/^```[[:space:]]*$/p' |
                 sed '1d;$d'
               )"
-
             else
               REPAIRED_PATCH="$TEXT"
             fi
@@ -390,7 +387,6 @@ Instructions:
                 REPAIRED=$((REPAIRED + 1))
 
                 echo "✨ Repaired: $PATCH"
-
               else
                 echo "::error::Candidate failed during actual apply"
                 FAILED=$((FAILED + 1))
@@ -400,7 +396,6 @@ Instructions:
                 --force \
                 "$VALIDATION_WORKTREE" \
                 2>/dev/null || true
-
             else
 
               echo "❌ Gemini repair failed validation:"
@@ -409,7 +404,6 @@ Instructions:
 
               FAILED=$((FAILED + 1))
             fi
-
           done
 
           echo
@@ -522,4 +516,3 @@ Instructions:
             automated
             patch
             upstream-sync
-````
