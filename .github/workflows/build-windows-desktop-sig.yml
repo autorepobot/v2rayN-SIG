@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   build:
-    uses: ./.github/workflows/build.yml
+    uses: ./.github/workflows/build-sig.yml
     with:
       target: windows
 
