@@ -5,7 +5,7 @@ on:
 
 jobs:
   cleanup-runners:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-riscv
 
     steps:
       - name: Disable and delete all self-hosted runners
