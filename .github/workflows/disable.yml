@@ -1,4 +1,4 @@
-name: 🛠 Manage Workflow and Runner
+name: 🀫 Manage Workflow and Runner
 
 on:
   workflow_dispatch:
