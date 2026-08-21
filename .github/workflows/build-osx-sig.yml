@@ -1,4 +1,4 @@
-name: release macOS
+name: release macOS SIG
 
 on:
   workflow_dispatch:
