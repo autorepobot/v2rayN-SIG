@@ -1,4 +1,4 @@
-name: package and release Zip
+name: package and release Zip SIG
 
 on:
   workflow_call:
