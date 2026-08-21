@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       home_disable:
-        description: "主页区域：禁用普通 workflow (.yml -> .yml.disable)"
+        description: "主页区域：禁用普通脚本 (.sh -> .sh.disable)"
         required: false
         type: boolean
         default: false
 
       home_restore:
-        description: "主页区域：恢复 workflow (.disable -> .yml)"
+        description: "主页区域：恢复脚本 (.sh.disable -> .sh)"
         required: false
         type: boolean
         default: false
@@ -54,31 +54,14 @@ jobs:
 
 
       ##################################
-      # Home workflow disable
+      # Home scripts disable (.sh)
       ##################################
 
-      - name: Disable home workflows
+      - name: Disable home scripts
         if: inputs.home_disable
         run: |
-          echo "Disable non-SIG files with SIG counterpart"
+          echo "Disable non-SIG scripts with SIG counterpart"
 
-          cd .github/workflows
-
-          # Disable yml files when xxx-sig.yml exists
-          for sig in *-sig.yml; do
-            if [ -f "$sig" ]; then
-              normal="${sig/-sig.yml/.yml}"
-
-              if [ -f "$normal" ]; then
-                echo "Disable $normal"
-                mv "$normal" "$normal.disable"
-              fi
-            fi
-          done
-
-          cd ../..
-
-          # Disable sh files when xxx-sig.sh exists
           for sig in *-sig.sh; do
             if [ -f "$sig" ]; then
               normal="${sig/-sig.sh/.sh}"
@@ -92,21 +75,42 @@ jobs:
 
 
       ##################################
-      # Restore workflow
+      # Runner workflow disable (.yml)
       ##################################
 
-      - name: Restore workflows
-        if: inputs.home_restore || inputs.restore_disable
+      - name: Disable runner workflows
+        if: inputs.runner_disable
         run: |
-          echo "Restore non-SIG files with SIG counterpart"
+          echo "Disable non-SIG workflows with SIG counterpart"
 
           cd .github/workflows
 
-          # Restore yml files only if xxx-sig.yml exists
-          for f in *.yml.disable; do
+          for sig in *-sig.yml; do
+            if [ -f "$sig" ]; then
+              normal="${sig/-sig.yml/.yml}"
+
+              if [ -f "$normal" ]; then
+                echo "Disable $normal"
+                mv "$normal" "$normal.disable"
+              fi
+            fi
+          done
+
+
+      ##################################
+      # Restore disable files
+      ##################################
+
+      - name: Restore disabled files
+        if: inputs.home_restore || inputs.restore_disable
+        run: |
+          echo "Restore disabled files"
+
+          # Restore scripts
+          for f in *.sh.disable; do
             if [ -f "$f" ]; then
               normal="${f%.disable}"
-              sig="${normal/.yml/-sig.yml}"
+              sig="${normal/.sh/-sig.sh}"
 
               if [ -f "$sig" ]; then
                 echo "Restore $normal"
@@ -117,13 +121,14 @@ jobs:
             fi
           done
 
-          cd ../..
 
-          # Restore sh files only if xxx-sig.sh exists
-          for f in *.sh.disable; do
+          # Restore workflows
+          cd .github/workflows
+
+          for f in *.yml.disable; do
             if [ -f "$f" ]; then
               normal="${f%.disable}"
-              sig="${normal/.sh/-sig.sh}"
+              sig="${normal/.yml/-sig.yml}"
 
               if [ -f "$sig" ]; then
                 echo "Restore $normal"
@@ -196,7 +201,7 @@ jobs:
       ##################################
 
       - name: Commit workflow changes
-        if: inputs.home_disable || inputs.home_restore || inputs.restore_disable
+        if: inputs.home_disable || inputs.home_restore || inputs.runner_disable || inputs.restore_disable
         run: |
 
           git config user.name "github-actions"
