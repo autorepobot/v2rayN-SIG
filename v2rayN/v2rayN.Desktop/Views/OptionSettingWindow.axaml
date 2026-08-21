@@ -611,13 +611,15 @@
                             Grid.Column="0"
                             Margin="{StaticResource Margin4}"
                             VerticalAlignment="Center"
+                            IsVisible="{Binding BlIsWindows}"
                             Text="{x:Static resx:ResUI.TbSettingsEnableDragDropSort}" />
                         <ToggleSwitch
                             x:Name="togEnableDragDropSort"
                             Grid.Row="9"
                             Grid.Column="1"
                             Margin="{StaticResource Margin4}"
-                            HorizontalAlignment="Left" />
+                            HorizontalAlignment="Left"
+                            IsVisible="{Binding BlIsWindows}" />
 
                         <TextBlock
                             Grid.Row="10"
