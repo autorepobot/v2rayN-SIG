@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   build:
-    uses: ./.github/workflows/build.yml
+    uses: ./.github/workflows/build-sig.yml
     with:
       target: windows
       project: ./v2rayN/v2rayN.csproj
@@ -24,7 +24,7 @@ jobs:
   release-zip:
     if: inputs.release_tag != ''
     needs: build
-    uses: ./.github/workflows/package-zip.yml
+    uses: ./.github/workflows/package-zip-sig.yml
     with:
       target: windows
       release_tag: ${{ inputs.release_tag }}
