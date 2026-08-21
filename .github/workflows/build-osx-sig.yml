@@ -16,14 +16,14 @@ permissions:
 
 jobs:
   build:
-    uses: ./.github/workflows/build.yml
+    uses: ./.github/workflows/build-sig.yml
     with:
       target: macos
 
   release-zip:
     if: inputs.release_tag != ''
     needs: build
-    uses: ./.github/workflows/package-zip.yml
+    uses: ./.github/workflows/package-zip-sig.yml
     with:
       target: macos
       release_tag: ${{ inputs.release_tag }}
@@ -59,10 +59,10 @@ jobs:
       run: brew install create-dmg
 
     - name: Ensure script permissions
-      run: chmod 755 package-osx.sh
+      run: chmod 755 package-osx-sig.sh
 
     - name: Package dmg
-      run: ./package-osx.sh macos-$Arch v2rayN-macos-$Arch ${{ inputs.release_tag }}
+      run: ./package-osx-sig.sh macos-$Arch v2rayN-macos-$Arch ${{ inputs.release_tag }}
 
     - name: Upload dmg artifact
       uses: actions/upload-artifact@v7
