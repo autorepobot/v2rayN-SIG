@@ -1,134 +1,164 @@
-name: 🀫 Runner and Workflow Manager
+name: 🛠 Manage Workflow and Runner
 
 on:
   workflow_dispatch:
     inputs:
-      disable_home_workflows:
-        description: "Disable homepage workflows (.yml -> .yml.disable)"
+      home_disable:
+        description: "主页区域：禁用普通 workflow (.yml -> .yml.disable)"
+        required: false
         type: boolean
         default: false
 
-      restore_home_workflows:
-        description: "Restore disabled workflows (.disable -> .yml)"
+      home_restore:
+        description: "主页区域：恢复 workflow (.disable -> .yml)"
+        required: false
         type: boolean
         default: false
 
-      disable_runners:
-        description: "Disable all self-hosted runners"
+      runner_disable:
+        description: "Runner区域：Disable 所有 self-hosted runner"
+        required: false
         type: boolean
         default: false
 
-      delete_disabled_runners:
-        description: "Delete disabled self-hosted runners"
+      runner_delete:
+        description: "Runner区域：删除所有 self-hosted runner"
+        required: false
         type: boolean
         default: false
+
+      restore_disable:
+        description: "恢复所有 .disable 文件"
+        required: false
+        type: boolean
+        default: false
+
 
 permissions:
-  actions: write
   contents: write
+  actions: write
+
 
 jobs:
+
   manage:
+    name: Manage Workflow / Runner
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.PAT_TOKEN }}
 
-      # -----------------------------
-      # Workflow 文件区域
-      # -----------------------------
-      - name: Disable homepage workflows
-        if: ${{ inputs.disable_home_workflows }}
+      ##################################
+      # Home workflow disable
+      ##################################
+
+      - name: Disable home workflows
+        if: inputs.home_disable
         run: |
-          echo "Disable workflows"
+          echo "Disable workflow files"
 
           cd .github/workflows
 
-          for file in *.yml; do
-            case "$file" in
-              "*-sig.yml")
-                ;;
-              *)
-                echo "Disable $file"
-                mv "$file" "$file.disable"
-                ;;
-            esac
+          for f in build*.yml package*.yml test.yml; do
+            if [ -f "$f" ]; then
+              echo "Disable $f"
+              mv "$f" "$f.disable"
+            fi
           done
 
-      - name: Restore homepage workflows
-        if: ${{ inputs.restore_home_workflows }}
+
+      ##################################
+      # Restore workflow
+      ##################################
+
+      - name: Restore workflows
+        if: inputs.home_restore || inputs.restore_disable
         run: |
-          echo "Restore workflows"
+          echo "Restore disable files"
 
           cd .github/workflows
 
-          for file in *.yml.disable; do
-            [ -e "$file" ] || continue
-
-            new_name="${file%.disable}"
-
-            echo "Restore $file -> $new_name"
-            mv "$file" "$new_name"
+          for f in *.yml.disable; do
+            if [ -f "$f" ]; then
+              echo "Restore $f"
+              mv "$f" "${f%.disable}"
+            fi
           done
 
 
-      # -----------------------------
-      # Runner 区域
-      # -----------------------------
+      ##################################
+      # Disable runners
+      ##################################
+
       - name: Disable runners
-        if: ${{ inputs.disable_runners }}
+        if: inputs.runner_disable
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          echo "Disable runners"
+
+          echo "Find runners"
 
           RUNNERS=$(gh api \
-            /repos/${{ github.repository }}/actions/runners \
-            --jq '.runners[].id')
+          repos/${{ github.repository }}/actions/runners \
+          --jq '.runners[].id')
 
-          for id in $RUNNERS; do
+
+          for id in $RUNNERS
+          do
             echo "Disable runner $id"
 
             gh api \
-              --method POST \
-              /repos/${{ github.repository }}/actions/runners/$id/disable || true
+            --method POST \
+            repos/${{ github.repository }}/actions/runners/$id/disable || true
+
           done
 
 
-      - name: Delete disabled runners
-        if: ${{ inputs.delete_disabled_runners }}
+      ##################################
+      # Delete runners
+      ##################################
+
+      - name: Delete runners
+        if: inputs.runner_delete
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          echo "Delete disabled runners"
+
+          echo "Find runners"
 
           RUNNERS=$(gh api \
-            /repos/${{ github.repository }}/actions/runners \
-            --jq '.runners[] | select(.status=="offline") | .id')
+          repos/${{ github.repository }}/actions/runners \
+          --jq '.runners[].id')
 
-          for id in $RUNNERS; do
+
+          for id in $RUNNERS
+          do
             echo "Delete runner $id"
 
             gh api \
-              --method DELETE \
-              /repos/${{ github.repository }}/actions/runners/$id || true
+            --method DELETE \
+            repos/${{ github.repository }}/actions/runners/$id || true
+
           done
 
 
-      # -----------------------------
-      # 提交 workflow 文件修改
-      # -----------------------------
+      ##################################
+      # Commit changes
+      ##################################
+
       - name: Commit workflow changes
-        if: ${{ inputs.disable_home_workflows || inputs.restore_home_workflows }}
+        if: inputs.home_disable || inputs.home_restore || inputs.restore_disable
         run: |
+
           git config user.name "github-actions"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.email "github-actions@github.com"
 
-          git add .github/workflows
+          git add .
 
-          git commit -m "Manage workflows automatically" || echo "No changes"
+          git commit -m "Manage workflow disable files" || echo "No changes"
 
           git push
