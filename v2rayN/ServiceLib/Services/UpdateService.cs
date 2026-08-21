@@ -37,9 +37,9 @@ public class UpdateService(Config config, Func<bool, string, Task> updateFunc)
             await UpdateFunc(false, string.Format(ResUI.MsgParsingSuccessfully, ECoreType.v2rayN));
             await UpdateFunc(false, result.Msg);
 
-            url = result.Url!;
+            url = result.Url.ToString();
             fileName = Utils.GetTempPath(Utils.GetGuid());
-            await downloadHandle.DownloadFileAsync(new() { FileUrl = url, FilePath = fileName }, true, TimeSpan.FromSeconds(_timeout));
+            await downloadHandle.DownloadFileAsync(url, fileName, true, _timeout);
         }
         else
         {
@@ -86,10 +86,10 @@ public class UpdateService(Config config, Func<bool, string, Task> updateFunc)
             await UpdateFunc(false, string.Format(ResUI.MsgParsingSuccessfully, type));
             await UpdateFunc(false, result.Msg);
 
-            url = result.Url!;
+            url = result.Url.ToString();
             var ext = url.Contains(".tar.gz") ? ".tar.gz" : Path.GetExtension(url);
             fileName = Utils.GetTempPath(Utils.GetGuid() + ext);
-            await downloadHandle.DownloadFileAsync(new() { FileUrl = url, FilePath = fileName }, true, TimeSpan.FromSeconds(_timeout));
+            await downloadHandle.DownloadFileAsync(url, fileName, true, _timeout);
         }
         else
         {
@@ -139,13 +139,9 @@ public class UpdateService(Config config, Func<bool, string, Task> updateFunc)
 
     public async Task UpdateGeoFileAll()
     {
-        var requests = new List<FileDownloadRequest>();
-        requests.AddRange(GetGeoFilesRequest());
-        requests.AddRange(GetOtherFilesRequest());
-        requests.AddRange(await GetSrsFileAllRequest());
-        // NOTE: srs files are more small, so we reverse the order to ensure a good download experience for the user.
-        requests.Reverse();
-        await DownloadGeoFiles(requests);
+        await UpdateGeoFiles();
+        await UpdateOtherFiles();
+        await UpdateSrsFileAll();
         await UpdateFunc(true, string.Format(ResUI.MsgDownloadGeoFileSuccessfully, "geo"));
     }
 
@@ -367,53 +363,41 @@ public class UpdateService(Config config, Func<bool, string, Task> updateFunc)
 
     #region Geo private
 
-    private List<FileDownloadRequest> GetGeoFilesRequest()
+    private async Task UpdateGeoFiles()
     {
         var geoUrl = string.IsNullOrEmpty(_config?.ConstItem.GeoSourceUrl)
             ? Global.GeoUrl
             : _config.ConstItem.GeoSourceUrl;
 
         List<string> files = ["geosite", "geoip"];
-        return
-        [
-            .. from geoName in files
-            let fileName = $"{geoName}.dat"
-            let targetPath = Utils.GetBinPath($"{fileName}")
-            let url = string.Format(geoUrl, geoName)
-            select new FileDownloadRequest()
-            {
-                FileUrl = url,
-                FilePath = targetPath,
-                DisplayFileName = fileName,
-            },
-        ];
+        foreach (var geoName in files)
+        {
+            var fileName = $"{geoName}.dat";
+            var targetPath = Utils.GetBinPath($"{fileName}");
+            var url = string.Format(geoUrl, geoName);
+
+            await DownloadGeoFile(url, fileName, targetPath);
+        }
     }
 
-    private List<FileDownloadRequest> GetOtherFilesRequest()
+    private async Task UpdateOtherFiles()
     {
         //If it is not in China area, no update is required
         if (_config.ConstItem.GeoSourceUrl.IsNotEmpty())
         {
-            return [];
+            return;
         }
 
-        return
-        [
-            .. Global.OtherGeoUrls.Select(url =>
-            {
-                var fileName = Path.GetFileName(url);
-                var targetPath = Utils.GetBinPath($"{fileName}");
-                return new FileDownloadRequest()
-                {
-                    FileUrl = url,
-                    FilePath = targetPath,
-                    DisplayFileName = fileName,
-                };
-            }),
-        ];
+        foreach (var url in Global.OtherGeoUrls)
+        {
+            var fileName = Path.GetFileName(url);
+            var targetPath = Utils.GetBinPath($"{fileName}");
+
+            await DownloadGeoFile(url, fileName, targetPath);
+        }
     }
 
-    private async Task<List<FileDownloadRequest>> GetSrsFileAllRequest()
+    private async Task UpdateSrsFileAll()
     {
         var geoipFiles = new List<string>();
         var geoSiteFiles = new List<string>();
@@ -448,12 +432,15 @@ public class UpdateService(Config config, Func<bool, string, Task> updateFunc)
             Directory.CreateDirectory(path);
         }
 
-        return
-        [
-            .. geoipFiles.Distinct().Select(f => (type: "geoip", file: f))
-                .Concat(geoSiteFiles.Distinct().Select(f => (type: "geosite", file: f)))
-                .Select(item => GetSrsFileRequest(item.type, item.file)),
-        ];
+        foreach (var item in geoipFiles.Distinct())
+        {
+            await UpdateSrsFile("geoip", item);
+        }
+
+        foreach (var item in geoSiteFiles.Distinct())
+        {
+            await UpdateSrsFile("geosite", item);
+        }
     }
 
     private void AddPrefixedItems(List<string>? items, string prefix, List<string> output)
@@ -513,7 +500,7 @@ public class UpdateService(Config config, Func<bool, string, Task> updateFunc)
         }
     }
 
-    private FileDownloadRequest GetSrsFileRequest(string type, string srsName)
+    private async Task UpdateSrsFile(string type, string srsName)
     {
         var srsUrl = string.IsNullOrEmpty(_config.ConstItem.SrsSourceUrl)
                         ? Global.SingboxRulesetUrl
@@ -523,57 +510,33 @@ public class UpdateService(Config config, Func<bool, string, Task> updateFunc)
         var targetPath = Path.Combine(Utils.GetBinPath("srss"), fileName);
         var url = string.Format(srsUrl, type, $"{type}-{srsName}", srsName);
 
-        return new FileDownloadRequest()
-        {
-            FileUrl = url,
-            FilePath = targetPath,
-            DisplayFileName = fileName,
-        };
+        await DownloadGeoFile(url, fileName, targetPath);
     }
 
-    private async Task DownloadGeoFiles(List<FileDownloadRequest> requests)
+    private async Task DownloadGeoFile(string url, string fileName, string targetPath)
     {
-        var tmpFilePathDict = new Dictionary<string, string>();
-        var tmpFileRequests = new List<FileDownloadRequest>();
-        foreach (var request in requests)
-        {
-            var tmpFilePath = Utils.GetTempPath(Utils.GetGuid());
-            tmpFilePathDict[request.FilePath] = tmpFilePath;
-            tmpFileRequests.Add(request with
-            {
-                FilePath = tmpFilePath,
-            });
-        }
+        var tmpFileName = Utils.GetTempPath(Utils.GetGuid());
 
         DownloadService downloadHandle = new();
         downloadHandle.UpdateCompleted += (sender2, args) =>
         {
             if (args.Success)
             {
-                //_ = UpdateFunc(false, string.Format(ResUI.MsgDownloadGeoFileSuccessfully, fileName));
+                _ = UpdateFunc(false, string.Format(ResUI.MsgDownloadGeoFileSuccessfully, fileName));
 
-                foreach (var request in requests)
+                try
                 {
-                    try
+                    if (File.Exists(tmpFileName))
                     {
-                        //if (File.Exists(tmpFileName))
-                        //{
-                        //    File.Copy(tmpFileName, targetPath, true);
+                        File.Copy(tmpFileName, targetPath, true);
 
-                        //    File.Delete(tmpFileName);
-                        //    //await    UpdateFunc(true, "");
-                        //}
-                        var tmpFileName = tmpFilePathDict[request.FilePath];
-                        if (File.Exists(tmpFileName))
-                        {
-                            File.Copy(tmpFileName, request.FilePath, true);
-                            File.Delete(tmpFileName);
-                        }
+                        File.Delete(tmpFileName);
+                        //await    UpdateFunc(true, "");
                     }
-                    catch (Exception ex)
-                    {
-                        _ = UpdateFunc(false, ex.Message);
-                    }
+                }
+                catch (Exception ex)
+                {
+                    _ = UpdateFunc(false, ex.Message);
                 }
             }
             else
@@ -586,7 +549,7 @@ public class UpdateService(Config config, Func<bool, string, Task> updateFunc)
             _ = UpdateFunc(false, args.GetException().Message);
         };
 
-        await downloadHandle.DownloadSmallFilesAsync(tmpFileRequests, true, TimeSpan.FromSeconds(_timeout));
+        await downloadHandle.DownloadFileAsync(url, tmpFileName, true, _timeout);
     }
 
     #endregion Geo private

@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 
 namespace ServiceLib.Common;
 
@@ -139,10 +138,7 @@ public static class Extension
     public static async Task<TOutput> HandleSafe<TInput, TOutput>(
         this Interaction<TInput, TOutput> interaction,
         TInput input,
-        TOutput defaultValue = default!,
-        [CallerMemberName] string memberName = "",
-        [CallerFilePath] string filePath = "",
-        [CallerLineNumber] int lineNumber = 0)
+        TOutput defaultValue = default!)
     {
         try
         {
@@ -150,14 +146,12 @@ public static class Extension
         }
         catch (UnhandledInteractionException<TInput, TOutput> ex)
         {
-            var title = $"Unhandled interaction exception in {memberName} at {filePath}:{lineNumber}";
-            Logging.SaveLog(title, ex);
+            Logging.SaveLog($"Unhandled interaction exception for input: {input}", ex);
             return defaultValue;
         }
         catch (Exception ex)
         {
-            var title = $"Exception occurred while handling interaction in {memberName} at {filePath}:{lineNumber}, input: {input}";
-            Logging.SaveLog(title, ex);
+            Logging.SaveLog($"Exception occurred while handling interaction for input: {input}", ex);
             return defaultValue;
         }
     }
