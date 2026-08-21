@@ -14,7 +14,7 @@ permissions:
 jobs:
   public-key:
     if: inputs.release_tag != ''
-    uses: ./.github/workflows/pub-key.yml
+    uses: ./.github/workflows/pub-key-sig.yml
     with:
       release_tag: ${{ inputs.release_tag }}
     secrets:
