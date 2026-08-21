@@ -23,7 +23,7 @@ jobs:
   release-zip:
     if: inputs.release_tag != ''
     needs: build
-    uses: ./.github/workflows/package-zip.yml
+    uses: ./.github/workflows/package-zip-sig.yml
     with:
       target: windows-desktop
       release_tag: ${{ inputs.release_tag }}
