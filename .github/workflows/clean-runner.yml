@@ -1,0 +1,68 @@
+name: 🀫 Cleanup Completed Runs
+on:
+  workflow_dispatch:
+    inputs:
+      keep_latest:
+        description: '每个 workflow 保留最近多少条已完成记录（0 表示全部删除）'
+        type: number
+        default: 0
+  schedule:
+    - cron: '0 3 * * 0'
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete completed workflow runs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          KEEP_LATEST: ${{ github.event.inputs.keep_latest || '0' }}
+        run: |
+          set -e
+
+          echo "Repository: $REPO"
+          echo "Keep latest per workflow: $KEEP_LATEST"
+
+          WORKFLOW_IDS=$(gh api "repos/$REPO/actions/workflows" --paginate -q '.workflows[].id')
+
+          TOTAL_DELETED=0
+
+          for wf_id in $WORKFLOW_IDS; do
+            echo "----"
+            echo "Processing workflow id: $wf_id"
+
+            RUN_IDS=$(gh api "repos/$REPO/actions/workflows/$wf_id/runs" \
+              --paginate \
+              -q '.workflow_runs[] | select(.status=="completed") | .id')
+
+            if [ -z "$RUN_IDS" ]; then
+              echo "No completed runs for this workflow."
+              continue
+            fi
+
+            COUNT=$(echo "$RUN_IDS" | wc -l)
+            echo "Found $COUNT completed run(s)."
+
+            if [ "$KEEP_LATEST" -gt 0 ]; then
+              RUN_IDS_TO_DELETE=$(echo "$RUN_IDS" | tail -n +$((KEEP_LATEST + 1)))
+            else
+              RUN_IDS_TO_DELETE="$RUN_IDS"
+            fi
+
+            for run_id in $RUN_IDS_TO_DELETE; do
+              echo "Deleting run: $run_id"
+              if gh api -X DELETE "repos/$REPO/actions/runs/$run_id" --silent; then
+                TOTAL_DELETED=$((TOTAL_DELETED + 1))
+              else
+                echo "::warning::Failed to delete run $run_id"
+              fi
+            done
+          done
+
+          echo "----"
+          echo "Total deleted: $TOTAL_DELETED"
