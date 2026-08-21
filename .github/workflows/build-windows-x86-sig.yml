@@ -1,4 +1,4 @@
-name: release Windows x86
+name: release Windows x86 SIG
 
 on:
   workflow_dispatch:
