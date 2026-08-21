@@ -52,6 +52,7 @@ jobs:
         with:
           token: ${{ secrets.PAT_TOKEN }}
 
+
       ##################################
       # Home workflow disable
       ##################################
@@ -59,14 +60,33 @@ jobs:
       - name: Disable home workflows
         if: inputs.home_disable
         run: |
-          echo "Disable workflow files"
+          echo "Disable non-SIG files with SIG counterpart"
 
           cd .github/workflows
 
-          for f in build*.yml package*.yml test.yml; do
-            if [ -f "$f" ]; then
-              echo "Disable $f"
-              mv "$f" "$f.disable"
+          # Disable yml files when xxx-sig.yml exists
+          for sig in *-sig.yml; do
+            if [ -f "$sig" ]; then
+              normal="${sig/-sig.yml/.yml}"
+
+              if [ -f "$normal" ]; then
+                echo "Disable $normal"
+                mv "$normal" "$normal.disable"
+              fi
+            fi
+          done
+
+          cd ../..
+
+          # Disable sh files when xxx-sig.sh exists
+          for sig in *-sig.sh; do
+            if [ -f "$sig" ]; then
+              normal="${sig/-sig.sh/.sh}"
+
+              if [ -f "$normal" ]; then
+                echo "Disable $normal"
+                mv "$normal" "$normal.disable"
+              fi
             fi
           done
 
@@ -78,14 +98,39 @@ jobs:
       - name: Restore workflows
         if: inputs.home_restore || inputs.restore_disable
         run: |
-          echo "Restore disable files"
+          echo "Restore non-SIG files with SIG counterpart"
 
           cd .github/workflows
 
+          # Restore yml files only if xxx-sig.yml exists
           for f in *.yml.disable; do
             if [ -f "$f" ]; then
-              echo "Restore $f"
-              mv "$f" "${f%.disable}"
+              normal="${f%.disable}"
+              sig="${normal/.yml/-sig.yml}"
+
+              if [ -f "$sig" ]; then
+                echo "Restore $normal"
+                mv "$f" "$normal"
+              else
+                echo "Skip $f (no SIG counterpart)"
+              fi
+            fi
+          done
+
+          cd ../..
+
+          # Restore sh files only if xxx-sig.sh exists
+          for f in *.sh.disable; do
+            if [ -f "$f" ]; then
+              normal="${f%.disable}"
+              sig="${normal/.sh/-sig.sh}"
+
+              if [ -f "$sig" ]; then
+                echo "Restore $normal"
+                mv "$f" "$normal"
+              else
+                echo "Skip $f (no SIG counterpart)"
+              fi
             fi
           done
 
