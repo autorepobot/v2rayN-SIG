@@ -379,6 +379,10 @@ jobs:
                   input: $input
                 }'
             )"
+
+            REQUEST_FILE="$TMP_DIR/$(basename "$PATCH").request.json"
+            printf '%s' "$REQUEST" > "$REQUEST_FILE"
+
             RESPONSE_FILE="$TMP_DIR/gemini-response.json"
             GEMINI_SUCCESS=false
 
@@ -397,7 +401,7 @@ jobs:
                   "https://generativelanguage.googleapis.com/v1beta/interactions" \
                   -H "x-goog-api-key: ${GEMINI_API_KEY}" \
                   -H "Content-Type: application/json" \
-                  -d "$REQUEST" \
+                  --data-binary "@${REQUEST_FILE}" \
                   || true
               )"
 
