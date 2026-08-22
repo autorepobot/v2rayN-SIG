@@ -16,7 +16,7 @@ diff --git a/v2rayN/ServiceLib/Handler/ConfigHandler.cs b/v2rayN/ServiceLib/Hand
 index 308c86f95c8..4ec6dedf860 100644
 --- a/v2rayN/ServiceLib/Handler/ConfigHandler.cs
 +++ b/v2rayN/ServiceLib/Handler/ConfigHandler.cs
-@@ -274,6 +274,7 @@ public static async Task<int> AddServer(Config config, ProfileItem profileItem)
+@@ -271,6 +271,7 @@ public static async Task<int> AddServer(Config config, ProfileItem profileItem)
              item.MuxEnabled = profileItem.MuxEnabled;
              item.Cert = profileItem.Cert;
              item.CertSha = profileItem.CertSha;
@@ -28,7 +28,7 @@ diff --git a/v2rayN/ServiceLib/Models/CoreConfigs/SingboxConfig.cs b/v2rayN/Serv
 index a835b15f05e..2159b84d96c 100644
 --- a/v2rayN/ServiceLib/Models/CoreConfigs/SingboxConfig.cs
 +++ b/v2rayN/ServiceLib/Models/CoreConfigs/SingboxConfig.cs
-@@ -190,6 +190,7 @@ public class Tls4Sbox
+@@ -250,6 +250,7 @@ public class Tls4Sbox
      public string? fragment_fallback_delay { get; set; }
      public bool? record_fragment { get; set; }
      public List<string>? certificate { get; set; }
@@ -40,7 +40,7 @@ diff --git a/v2rayN/ServiceLib/Models/Entities/ProfileItem.cs b/v2rayN/ServiceLi
 index 375f43f6d2b..aa3cb1f6bea 100644
 --- a/v2rayN/ServiceLib/Models/Entities/ProfileItem.cs
 +++ b/v2rayN/ServiceLib/Models/Entities/ProfileItem.cs
-@@ -195,6 +195,7 @@ public bool GetAllowInsecure()
+@@ -197,6 +197,7 @@ public bool GetAllowInsecure()
      public bool? MuxEnabled { get; set; }
      public string Cert { get; set; }
      public string CertSha { get; set; }
@@ -74,7 +74,7 @@ diff --git a/v2rayN/ServiceLib/Resx/ResUI.fr.resx b/v2rayN/ServiceLib/Resx/ResUI
 index 9688fbd4d0a..e9efe9d7e85 100644
 --- a/v2rayN/ServiceLib/Resx/ResUI.fr.resx
 +++ b/v2rayN/ServiceLib/Resx/ResUI.fr.resx
-@@ -1617,6 +1617,9 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
+@@ -1617,6 +1617,9 @@
    <data name="TbCertSha256Tips" xml:space="preserve">
      <value>Empreinte du certificat (SHA-256)</value>
    </data>
@@ -84,18 +84,11 @@ index 9688fbd4d0a..e9efe9d7e85 100644
    <data name="TbServeStale" xml:space="preserve">
      <value>Cache optimiste</value>
    </data>
-@@ -1767,4 +1770,4 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
-   <data name="menuNewUpdate" xml:space="preserve">
-     <value>Nouvelle MAJ</value>
-   </data>
--</root>
-\ No newline at end of file
-+</root>
 diff --git a/v2rayN/ServiceLib/Resx/ResUI.resx b/v2rayN/ServiceLib/Resx/ResUI.resx
 index f0de8ad6552..07f17867e6c 100644
 --- a/v2rayN/ServiceLib/Resx/ResUI.resx
 +++ b/v2rayN/ServiceLib/Resx/ResUI.resx
-@@ -1629,6 +1629,9 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
+@@ -1629,6 +1629,9 @@
    <data name="TbCertSha256Tips" xml:space="preserve">
      <value>Certificate fingerprint (SHA-256)</value>
    </data>
@@ -119,13 +112,6 @@ index 1dfc03781c8..d04f6dc743f 100644
    <data name="TbServeStale" xml:space="preserve">
      <value>乐观缓存</value>
    </data>
-@@ -1861,4 +1864,4 @@
-   <data name="LvCustomCoreType" xml:space="preserve">
-     <value>自定义配置核心</value>
-   </data>
--</root>
-\ No newline at end of file
-+</root>
 diff --git a/v2rayN/ServiceLib/Services/CoreConfig/Singbox/SingboxOutboundService.cs b/v2rayN/ServiceLib/Services/CoreConfig/Singbox/SingboxOutboundService.cs
 index 83f43d2ff18..524ee3ea6aa 100644
 --- a/v2rayN/ServiceLib/Services/CoreConfig/Singbox/SingboxOutboundService.cs
@@ -158,17 +144,17 @@ index 3f01261dcf7..32d9b1b8ebe 100644
      [Reactive]
      public partial string SalamanderPass { get; set; }
  
-@@ -265,6 +268,9 @@ public AddServerViewModel(ProfileItem profileItem)
+@@ -271,6 +274,9 @@ public AddServerViewModel(ProfileItem profileItem)
          this.WhenAnyValue(x => x.CertSha)
              .Subscribe(_ => UpdateCertTip());
  
 +        this.WhenAnyValue(x => x.CertPubKeySha)
 +            .Subscribe(_ => UpdateCertTip());
-+        
++
          this.WhenAnyValue(x => x.SelectedSource.Network)
              .Subscribe(_ =>
              {
-@@ -292,6 +298,7 @@ public AddServerViewModel(ProfileItem profileItem)
+@@ -298,6 +304,7 @@ public AddServerViewModel(ProfileItem profileItem)
          MuxEnabled = SelectedSource?.MuxEnabled == true;
          Cert = SelectedSource?.Cert ?? string.Empty;
          CertSha = SelectedSource?.CertSha ?? string.Empty;
@@ -176,7 +162,7 @@ index 3f01261dcf7..32d9b1b8ebe 100644
  
          var protocolExtra = SelectedSource?.GetProtocolExtra() ?? new();
          var transport = SelectedSource?.GetTransportExtra() ?? new();
-@@ -393,6 +400,7 @@ private async Task SaveServerAsync()
+@@ -402,6 +409,7 @@ private async Task SaveServerAsync()
          SelectedSource.MuxEnabled = MuxEnabled;
          SelectedSource.Cert = Cert.IsNullOrEmpty() ? string.Empty : Cert;
          SelectedSource.CertSha = CertSha.IsNullOrEmpty() ? string.Empty : CertSha;
@@ -184,7 +170,7 @@ index 3f01261dcf7..32d9b1b8ebe 100644
          if (!Global.Networks.Contains(SelectedSource.Network))
          {
              SelectedSource.Network = Global.DefaultNetwork;
-@@ -455,7 +463,7 @@ private async Task SaveServerAsync()
+@@ -464,7 +472,7 @@ private async Task SaveServerAsync()
      private void UpdateCertTip(string? errorMessage = null)
      {
          CertTip = errorMessage.IsNullOrEmpty()
@@ -197,7 +183,7 @@ diff --git a/v2rayN/v2rayN.Desktop/Views/AddServerWindow.axaml b/v2rayN/v2rayN.D
 index d3d17d9ea6e..5f8329b9503 100644
 --- a/v2rayN/v2rayN.Desktop/Views/AddServerWindow.axaml
 +++ b/v2rayN/v2rayN.Desktop/Views/AddServerWindow.axaml
-@@ -1272,6 +1272,17 @@
+@@ -688,6 +688,17 @@
                                              Width="400"
                                              Margin="{StaticResource Margin4}"
                                              HorizontalAlignment="Left" />
@@ -219,7 +205,7 @@ diff --git a/v2rayN/v2rayN.Desktop/Views/AddServerWindow.axaml.cs b/v2rayN/v2ray
 index a1d5b22dbdc..ef24b9ecb20 100644
 --- a/v2rayN/v2rayN.Desktop/Views/AddServerWindow.axaml.cs
 +++ b/v2rayN/v2rayN.Desktop/Views/AddServerWindow.axaml.cs
-@@ -175,6 +175,7 @@ public AddServerWindow()
+@@ -178,6 +178,7 @@ public AddServerWindow()
              this.Bind(ViewModel, vm => vm.SelectedSource.Fingerprint, v => v.cmbFingerprint.SelectedValue).DisposeWith(disposables);
              this.Bind(ViewModel, vm => vm.SelectedSource.Alpn, v => v.cmbAlpn.SelectedValue).DisposeWith(disposables);
              this.Bind(ViewModel, vm => vm.CertSha, v => v.txtCertSha256Pinning.Text).DisposeWith(disposables);
@@ -231,7 +217,7 @@ diff --git a/v2rayN/v2rayN/Views/AddServerWindow.xaml b/v2rayN/v2rayN/Views/AddS
 index cd39e7bd119..41730fc1dc5 100644
 --- a/v2rayN/v2rayN/Views/AddServerWindow.xaml
 +++ b/v2rayN/v2rayN/Views/AddServerWindow.xaml
-@@ -1601,6 +1601,19 @@
+@@ -1057,6 +1057,19 @@
                                      Margin="{StaticResource Margin4}"
                                      HorizontalAlignment="Left"
                                      Style="{StaticResource DefTextBox}" />
@@ -255,7 +241,7 @@ diff --git a/v2rayN/v2rayN/Views/AddServerWindow.xaml.cs b/v2rayN/v2rayN/Views/A
 index 8ae659c0eed..171f7f2e97b 100644
 --- a/v2rayN/v2rayN/Views/AddServerWindow.xaml.cs
 +++ b/v2rayN/v2rayN/Views/AddServerWindow.xaml.cs
-@@ -172,6 +172,7 @@ public AddServerWindow()
+@@ -173,6 +173,7 @@ public AddServerWindow()
              this.Bind(ViewModel, vm => vm.SelectedSource.Fingerprint, v => v.cmbFingerprint.Text).DisposeWith(disposables);
              this.Bind(ViewModel, vm => vm.SelectedSource.Alpn, v => v.cmbAlpn.Text).DisposeWith(disposables);
              this.Bind(ViewModel, vm => vm.CertSha, v => v.txtCertSha256Pinning.Text).DisposeWith(disposables);
