@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 
 namespace ServiceLib.Common;
 
@@ -133,5 +134,31 @@ public static class Extension
         return input.Replace("\r\n", replacement)
                     .Replace("\r", replacement)
                     .Replace("\n", replacement);
+    }
+
+    public static async Task<TOutput> HandleSafe<TInput, TOutput>(
+        this Interaction<TInput, TOutput> interaction,
+        TInput input,
+        TOutput defaultValue = default!,
+        [CallerMemberName] string memberName = "",
+        [CallerFilePath] string filePath = "",
+        [CallerLineNumber] int lineNumber = 0)
+    {
+        try
+        {
+            return await interaction.Handle(input);
+        }
+        catch (UnhandledInteractionException<TInput, TOutput> ex)
+        {
+            var title = $"Unhandled interaction exception in {memberName} at {filePath}:{lineNumber}";
+            Logging.SaveLog(title, ex);
+            return defaultValue;
+        }
+        catch (Exception ex)
+        {
+            var title = $"Exception occurred while handling interaction in {memberName} at {filePath}:{lineNumber}, input: {input}";
+            Logging.SaveLog(title, ex);
+            return defaultValue;
+        }
     }
 }
