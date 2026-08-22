@@ -1,8 +1,15 @@
+using AwesomeAssertions;
+using ServiceLib.Enums;
+using ServiceLib.Handler.Builder;
+using ServiceLib.Helper;
+using ServiceLib.Models;
+using Xunit;
+
 namespace ServiceLib.Tests.CoreConfig.Context;
 
 public class CoreConfigContextBuilderTests
 {
-    [Test]
+    [Fact]
     public async Task ResolveNodeAsync_DirectCycleDependency_ShouldFailWithCycleError()
     {
         var config = CoreConfigTestFactory.CreateConfig();
@@ -20,13 +27,13 @@ public class CoreConfigContextBuilderTests
 
         var (_, validatorResult) = await CoreConfigContextBuilder.ResolveNodeAsync(context, groupA, false);
 
-        await validatorResult.Success.Should().BeFalse();
-        await validatorResult.Errors.Should().Contain(ContainsCycleDependencyMessage);
-        await context.AllProxiesMap.Should().NotContainKey(groupA.IndexId);
-        await context.AllProxiesMap.Should().NotContainKey(groupB.IndexId);
+        validatorResult.Success.Should().BeFalse();
+        validatorResult.Errors.Should().Contain(msg => ContainsCycleDependencyMessage(msg));
+        context.AllProxiesMap.Should().NotContainKey(groupA.IndexId);
+        context.AllProxiesMap.Should().NotContainKey(groupB.IndexId);
     }
 
-    [Test]
+    [Fact]
     public async Task ResolveNodeAsync_IndirectCycleDependency_ShouldFailWithCycleError()
     {
         var config = CoreConfigTestFactory.CreateConfig();
@@ -46,14 +53,14 @@ public class CoreConfigContextBuilderTests
 
         var (_, validatorResult) = await CoreConfigContextBuilder.ResolveNodeAsync(context, groupA, false);
 
-        await validatorResult.Success.Should().BeFalse();
-        await validatorResult.Errors.Should().Contain(ContainsCycleDependencyMessage);
-        await context.AllProxiesMap.Should().NotContainKey(groupA.IndexId);
-        await context.AllProxiesMap.Should().NotContainKey(groupB.IndexId);
-        await context.AllProxiesMap.Should().NotContainKey(groupC.IndexId);
+        validatorResult.Success.Should().BeFalse();
+        validatorResult.Errors.Should().Contain(msg => ContainsCycleDependencyMessage(msg));
+        context.AllProxiesMap.Should().NotContainKey(groupA.IndexId);
+        context.AllProxiesMap.Should().NotContainKey(groupB.IndexId);
+        context.AllProxiesMap.Should().NotContainKey(groupC.IndexId);
     }
 
-    [Test]
+    [Fact]
     public async Task ResolveNodeAsync_CycleWithValidBranch_ShouldSkipCycleAndKeepValidChild()
     {
         var config = CoreConfigTestFactory.CreateConfig();
@@ -73,14 +80,14 @@ public class CoreConfigContextBuilderTests
 
         var (_, validatorResult) = await CoreConfigContextBuilder.ResolveNodeAsync(context, groupA, false);
 
-        await validatorResult.Success.Should().BeTrue();
-        await validatorResult.Errors.Should().BeEmpty();
-        await validatorResult.Warnings.Should().Contain(ContainsCycleDependencyMessage);
+        validatorResult.Success.Should().BeTrue();
+        validatorResult.Errors.Should().BeEmpty();
+        validatorResult.Warnings.Should().Contain(msg => ContainsCycleDependencyMessage(msg));
 
-        await context.AllProxiesMap.Should().ContainKey(leaf.IndexId);
-        await context.AllProxiesMap.Should().ContainKey(groupA.IndexId);
-        await context.AllProxiesMap.Should().NotContainKey(groupB.IndexId);
-        await groupA.GetProtocolExtra().ChildItems.Should().BeEqualTo(leaf.IndexId);
+        context.AllProxiesMap.Should().ContainKey(leaf.IndexId);
+        context.AllProxiesMap.Should().ContainKey(groupA.IndexId);
+        context.AllProxiesMap.Should().NotContainKey(groupB.IndexId);
+        groupA.GetProtocolExtra().ChildItems.Should().Be(leaf.IndexId);
     }
 
     private static string NewId(string prefix)

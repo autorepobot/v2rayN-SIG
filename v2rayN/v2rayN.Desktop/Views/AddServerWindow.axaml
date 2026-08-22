@@ -1265,23 +1265,10 @@
                                             Width="400"
                                             Margin="{StaticResource Margin4}"
                                             VerticalAlignment="Center"
-                                            TextWrapping="Wrap">
-                                            <Run Text="{x:Static resx:ResUI.TbCertSha256Tips}" />
-                                            <Run FontWeight="Bold" Text="{x:Static resx:ResUI.TbXrayOnly}" />
-                                        </TextBlock>
-                                        <TextBox
-                                            x:Name="txtCertSha256Pinning"
-                                            Width="400"
-                                            Margin="{StaticResource Margin4}"
-                                            HorizontalAlignment="Left" />
-                                        <TextBlock
-                                            Width="400"
-                                            Margin="{StaticResource Margin4}"
-                                            VerticalAlignment="Center"
-                                            Text="{x:Static resx:ResUI.TbCertPubKeySha256Tips}"
+                                            Text="{x:Static resx:ResUI.TbCertSha256Tips}"
                                             TextWrapping="Wrap" />
                                         <TextBox
-                                            x:Name="txtCertPubKeySha256"
+                                            x:Name="txtCertSha256Pinning"
                                             Width="400"
                                             Margin="{StaticResource Margin4}"
                                             HorizontalAlignment="Left" />

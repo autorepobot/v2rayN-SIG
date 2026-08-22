@@ -3,7 +3,7 @@ namespace ServiceLib.ViewModels;
 public partial class ProfilesSelectViewModel : MyReactiveObject, ICloseable
 {
     public event EventHandler? RequestClose;
-
+    
     public Interaction<RxVoid, RxVoid> ProfilesFocusInteraction { get; } = new();
 
     #region private prop
@@ -138,7 +138,13 @@ public partial class ProfilesSelectViewModel : MyReactiveObject, ICloseable
 
         await RefreshServers();
 
-        await ProfilesFocusInteraction.HandleSafe(RxVoid.Default);
+        try
+        {
+            await ProfilesFocusInteraction.Handle(RxVoid.Default);
+        }
+        catch (UnhandledInteractionException<RxVoid, RxVoid>)
+        {
+        }
     }
 
     private async Task ServerFilterChanged(bool c)

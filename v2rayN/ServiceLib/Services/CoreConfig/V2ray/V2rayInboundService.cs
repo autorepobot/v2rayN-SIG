@@ -67,14 +67,12 @@ public partial class CoreConfigV2rayService
 
                 var address = _config.TunModeItem.IPv4Address.NullIfEmpty() ?? Global.TunIPv4Address.First();
                 tunInbound.settings.gateway = [address];
-                // Route both families into the tunnel regardless of EnableIPv6Address. That option only
-                // controls whether the interface gets an IPv6 address; leaving ::/0 out of the routing
-                // table makes IPv6 follow the system default route and bypass the tunnel entirely.
-                tunInbound.settings.autoSystemRoutingTable = ["0.0.0.0/0", "::/0"];
+                tunInbound.settings.autoSystemRoutingTable = ["0.0.0.0/0"];
                 if (_config.TunModeItem.EnableIPv6Address == true)
                 {
                     var address6 = _config.TunModeItem.IPv6Address.NullIfEmpty() ?? Global.TunIPv6Address.First();
                     tunInbound.settings.gateway.Add(address6);
+                    tunInbound.settings.autoSystemRoutingTable.Add("::/0");
                 }
 
                 var bindInterface = _config.CoreBasicItem.BindInterface?.TrimEx();
@@ -83,8 +81,7 @@ public partial class CoreConfigV2rayService
                     tunInbound.settings.autoOutboundsInterface = bindInterface;
                 }
                 tunInbound.sniffing = inbound.sniffing;
-                // tunInbound.sniffing.routeOnly = inbound.sniffing.routeOnly;
-                tunInbound.sniffing.routeOnly = true;
+                tunInbound.sniffing.routeOnly = inbound.sniffing.routeOnly;
 
                 if (_config.TunModeItem.RouteExcludeAddress is { Count: > 0 })
                 {
@@ -121,8 +118,15 @@ public partial class CoreConfigV2rayService
                     includeList = IPNetwork2.Supernet(includeList.ToArray()).ToList();
                     includeListV6 = IPNetwork2.Supernet(includeListV6.ToArray()).ToList();
 
-                    tunInbound.settings.autoSystemRoutingTable = includeList.Select(x => x.ToString())
-                        .Concat(includeListV6.Select(x => x.ToString())).ToList();
+                    if (_config.TunModeItem.EnableIPv6Address)
+                    {
+                        tunInbound.settings.autoSystemRoutingTable = includeList.Select(x => x.ToString())
+                            .Concat(includeListV6.Select(x => x.ToString())).ToList();
+                    }
+                    else
+                    {
+                        tunInbound.settings.autoSystemRoutingTable = includeList.Select(x => x.ToString()).ToList();
+                    }
                 }
 
                 _coreConfig.inbounds.Add(tunInbound);

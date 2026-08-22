@@ -115,7 +115,6 @@ public static class ConfigHandler
         config.ConstItem ??= new ConstItem();
 
         config.SimpleDNSItem ??= InitBuiltinSimpleDNS();
-        config.SimpleDNSItem.BlockAAAAQuery ??= false;
         config.SimpleDNSItem.FakeIPRange ??= Global.FakeIPRanges.FirstOrDefault();
         config.SimpleDNSItem.GlobalFakeIp ??= true;
         config.SimpleDNSItem.BootstrapDNS ??= Global.DomainPureIPDNSAddress.FirstOrDefault();
@@ -275,7 +274,6 @@ public static class ConfigHandler
             item.MuxEnabled = profileItem.MuxEnabled;
             item.Cert = profileItem.Cert;
             item.CertSha = profileItem.CertSha;
-            item.CertPubKeySha = profileItem.CertPubKeySha;
             item.EchConfigList = profileItem.EchConfigList;
             item.VerifyPeerCertByName = profileItem.VerifyPeerCertByName;
             item.Finalmask = profileItem.Finalmask;
@@ -1799,18 +1797,21 @@ public static class ConfigHandler
         {
             ECoreType.Xray => V2rayFmt.ResolveToCustom(strData, subRemarks),
             ECoreType.sing_box => SingboxFmt.ResolveToCustom(strData, subRemarks),
-            _ => null,
+            _ => null
         };
 
-        if ((lstProfiles?.Count ?? 0) == 0)
+        if (lstProfiles is not null)
         {
-            return -1;
-        }
+            if (lstProfiles.Count == 0)
+            {
+                return -1;
+            }
 
-        var count = await AddBatchCustomServers(config, lstProfiles, subid, isSub);
-        if (count > 0)
-        {
-            return count;
+            var count = await AddBatchCustomServers(config, lstProfiles, subid, isSub);
+            if (count > 0)
+            {
+                return count;
+            }
         }
 
         return await SaveCustomRawFileServer(config, strData, subid, isSub, subItem, customCoreType);

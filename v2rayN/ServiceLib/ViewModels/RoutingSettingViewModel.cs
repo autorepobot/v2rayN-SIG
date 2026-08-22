@@ -147,7 +147,7 @@ public partial class RoutingSettingViewModel : MyReactiveObject
             NoticeManager.Instance.Enqueue(ResUI.PleaseSelectRules);
             return;
         }
-        if (await ShowYesNoInteraction.HandleSafe(ResUI.RemoveServer) == false)
+        if (await ShowYesNoInteraction.Handle(ResUI.RemoveServer) == false)
         {
             return;
         }
