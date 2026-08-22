@@ -20,6 +20,9 @@ DOTNET_CORE_RUNTIME_PACKAGE="Microsoft.NETCore.App.Runtime.linux-ppc64le"
 DOTNET_CORE_HOST_PACKAGE="Microsoft.NETCore.App.Host.linux-ppc64le"
 DOTNET_ASPNET_RUNTIME_PACKAGE="Microsoft.AspNetCore.App.Runtime.linux-ppc64le"
 
+SKIA_NUGET_LINK="https://github.com/autorepobot/SkiaSharp-ppc64le/releases/download/v3.119.4/SkiaSharp.NativeAssets.Linux.3.119.4.nupkg"
+HARFBUZZ_NUGET_LINK="https://github.com/autorepobot/SkiaSharp-ppc64le/releases/download/v3.119.4/HarfBuzzSharp.NativeAssets.Linux.8.3.1.5.nupkg"
+
 OS_ID=""
 OS_NAME=""
 OS_VERSION_ID=""
@@ -122,10 +125,18 @@ prepare_dotnet_ppc64le_runtime_packs() {
     download_dotnet_runtime_pack "$package" "$DOTNET_RUNTIME_VERSION" "$DOTNET_PPC64LE_PACKAGES"
   done
 
+  echo "[+] Download SkiaSharp NativeAssets: $SKIA_NUGET_LINK"
+  curl -fL "$SKIA_NUGET_LINK" \
+    -o "$DOTNET_PPC64LE_PACKAGES/SkiaSharp.NativeAssets.Linux.3.119.4.nupkg"
+
+  echo "[+] Download HarfBuzzSharp NativeAssets: $HARFBUZZ_NUGET_LINK"
+  curl -fL "$HARFBUZZ_NUGET_LINK" \
+    -o "$DOTNET_PPC64LE_PACKAGES/HarfBuzzSharp.NativeAssets.Linux.8.3.1.5.nupkg"
+
   dotnet nuget remove source ppc64le-runtime >/dev/null 2>&1 || true
   dotnet nuget add source "$DOTNET_PPC64LE_PACKAGES" --name ppc64le-runtime
 
-  echo "[OK] ppc64le .NET runtime packs prepared in:"
+  echo "[OK] ppc64le .NET / SkiaSharp / HarfBuzz runtime packs prepared in:"
   echo "     $DOTNET_PPC64LE_PACKAGES"
 }
 
