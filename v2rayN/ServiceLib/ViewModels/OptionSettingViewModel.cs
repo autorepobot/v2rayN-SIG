@@ -238,7 +238,7 @@ public partial class OptionSettingViewModel : MyReactiveObject, ICloseable
             _config.CoreTypeItem.Add(new CoreTypeItem()
             {
                 ConfigType = it,
-                CoreType = ECoreType.sing_box
+                CoreType = ECoreType.Xray
             });
         }
         _config.CoreTypeItem.ForEach(it =>

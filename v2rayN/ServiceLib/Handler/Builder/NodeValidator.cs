@@ -145,8 +145,7 @@ public class NodeValidator
                 && item.CertSha.IsNullOrEmpty())
                 || (coreType == ECoreType.sing_box
                     && item.GetAllowInsecure()
-                    && !isCertProvided
-                    && item.CertPubKeySha.IsNullOrEmpty()))
+                    && !isCertProvided))
             {
                 v.Warning(ResUI.MsgInsecureConfiguration);
             }
