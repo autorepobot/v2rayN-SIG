@@ -1,4 +1,5 @@
 name: 🀫 Cleanup Completed Runs
+
 on:
   workflow_dispatch:
     inputs:
@@ -17,52 +18,78 @@ jobs:
   cleanup:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
       - name: Delete completed workflow runs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           KEEP_LATEST: ${{ github.event.inputs.keep_latest || '0' }}
         run: |
-          set -e
+          set -euo pipefail
 
           echo "Repository: $REPO"
           echo "Keep latest per workflow: $KEEP_LATEST"
 
-          WORKFLOW_IDS=$(gh api "repos/$REPO/actions/workflows" --paginate -q '.workflows[].id')
+          declare -A WORKFLOW_FILES
+          while IFS= read -r file; do
+            WORKFLOW_FILES["$file"]=1
+          done < <(git ls-files '.github/workflows/*.yml' '.github/workflows/*.yaml')
+
+          RUNS_JSON=$(mktemp)
+          gh api \
+            --paginate \
+            "repos/$REPO/actions/runs?status=completed&per_page=100" \
+            | jq -s '{workflow_runs: [.[].workflow_runs[]]}' > "$RUNS_JSON"
 
           TOTAL_DELETED=0
 
-          for wf_id in $WORKFLOW_IDS; do
-            echo "----"
-            echo "Processing workflow id: $wf_id"
+          while IFS= read -r run; do
+            RUN_ID=$(jq -r '.id' <<< "$run")
+            RUN_PATH=$(jq -r '.path // empty' <<< "$run")
 
-            RUN_IDS=$(gh api "repos/$REPO/actions/workflows/$wf_id/runs" \
-              --paginate \
-              -q '.workflow_runs[] | select(.status=="completed") | .id')
-
-            if [ -z "$RUN_IDS" ]; then
-              echo "No completed runs for this workflow."
-              continue
-            fi
-
-            COUNT=$(echo "$RUN_IDS" | wc -l)
-            echo "Found $COUNT completed run(s)."
-
-            if [ "$KEEP_LATEST" -gt 0 ]; then
-              RUN_IDS_TO_DELETE=$(echo "$RUN_IDS" | tail -n +$((KEEP_LATEST + 1)))
-            else
-              RUN_IDS_TO_DELETE="$RUN_IDS"
-            fi
-
-            for run_id in $RUN_IDS_TO_DELETE; do
-              echo "Deleting run: $run_id"
-              if gh api -X DELETE "repos/$REPO/actions/runs/$run_id" --silent; then
+            if [[ -z "${WORKFLOW_FILES[$RUN_PATH]+x}" ]]; then
+              echo "Deleting orphan run $RUN_ID ($RUN_PATH)"
+              if gh api -X DELETE "repos/$REPO/actions/runs/$RUN_ID" --silent; then
                 TOTAL_DELETED=$((TOTAL_DELETED + 1))
               else
-                echo "::warning::Failed to delete run $run_id"
+                echo "::warning::Failed to delete run $RUN_ID"
               fi
-            done
-          done
+            fi
+          done < <(jq -c '.workflow_runs[]' "$RUNS_JSON")
+
+          while IFS= read -r path; do
+            [ -n "$path" ] || continue
+
+            RUNS=$(jq -c \
+              --arg path "$path" \
+              '[.workflow_runs[] | select(.path == $path)] | sort_by(.created_at) | reverse' \
+              "$RUNS_JSON")
+
+            COUNT=$(jq 'length' <<< "$RUNS")
+            echo "Workflow: $path"
+            echo "Completed runs: $COUNT"
+
+            if [ "$KEEP_LATEST" -gt 0 ]; then
+              RUNS_TO_DELETE=$(jq -c --argjson keep "$KEEP_LATEST" '.[$keep:][]' <<< "$RUNS")
+            else
+              RUNS_TO_DELETE=$(jq -c '.[]' <<< "$RUNS")
+            fi
+
+            while IFS= read -r run; do
+              [ -n "$run" ] || continue
+              RUN_ID=$(jq -r '.id' <<< "$run")
+
+              echo "Deleting run $RUN_ID"
+              if gh api -X DELETE "repos/$REPO/actions/runs/$RUN_ID" --silent; then
+                TOTAL_DELETED=$((TOTAL_DELETED + 1))
+              else
+                echo "::warning::Failed to delete run $RUN_ID"
+              fi
+            done <<< "$RUNS_TO_DELETE"
+          done < <(printf '%s\n' "${!WORKFLOW_FILES[@]}")
 
           echo "----"
           echo "Total deleted: $TOTAL_DELETED"
