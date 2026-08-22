@@ -489,7 +489,7 @@ publish_binary() {
 
   dotnet clean "$PROJECT" -c Release
   rm -rf "$(dirname "$PROJECT")/bin/Release/net10.0" || true
-  dotnet restore "$PROJECT"
+  dotnet restore "$PROJECT" -r "$rid"
   dotnet publish "$PROJECT" -c Release -r "$rid" -p:PublishSingleFile=false -p:SelfContained=true
 }
 
