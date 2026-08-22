@@ -367,9 +367,12 @@ jobs:
             echo
             echo "🤖 Calling Gemini Interactions API..."
 
+            PROMPT_FILE="$TMP_DIR/$(basename "$PATCH").prompt.txt"
+            printf '%s\n' "$PROMPT" > "$PROMPT_FILE"
+
             REQUEST="$(
               jq -n \
-                --arg input "$PROMPT" \
+                --rawfile input "$PROMPT_FILE" \
                 '{
                   model: "gemini-3.6-flash",
                   store: false,
