@@ -1,0 +1,15 @@
+diff --git a/v2rayN/ServiceLib/Manager/CoreInfoManager.cs b/v2rayN/ServiceLib/Manager/CoreInfoManager.cs
+index bda3108ae44..7e7f2008e80 100644
+--- a/v2rayN/ServiceLib/Manager/CoreInfoManager.cs
++++ b/v2rayN/ServiceLib/Manager/CoreInfoManager.cs
+@@ -63,8 +63,8 @@ public List<ECoreType> GetCheckUpdateCoreTypes()
+ 
+             if (!(Utils.IsWindows() && Environment.OSVersion.Version.Major < 10))
+             {
+-                lst.Add(ECoreType.Xray);
+-                lst.Add(ECoreType.mihomo);
++                // lst.Add(ECoreType.Xray);
++                // lst.Add(ECoreType.mihomo);
+                 lst.Add(ECoreType.sing_box);
+             }
+         }
