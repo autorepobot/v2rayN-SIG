@@ -70,16 +70,21 @@ public partial class MsgViewModel : MyReactiveObject
                 sb.Append(line);
             }
 
-            if (sb.Length > 0)
-            {
-                try
-                {
-                    await DispatcherShowMsgInteraction.HandleSafe(sb.ToString());
-                }
-                catch (Exception)
-                {
-                    _queueMsg.Enqueue(sb.ToString());
-                }
+            if (sb.Length > 0)  
+            {  
+                try  
+                {  
+                    await DispatcherShowMsgInteraction.Handle(sb.ToString());  
+                }  
+                catch (UnhandledInteractionException<string, RxVoid> ex)  
+                {   
+                    Logging.SaveLog($"Unhandled interaction exception in {nameof(AppendQueueMsg)}", ex);  
+                    _queueMsg.Enqueue(sb.ToString());  
+                }  
+                catch (Exception ex)  
+                {  
+                    Logging.SaveLog($"Exception occurred while handling interaction in {nameof(AppendQueueMsg)}", ex);  
+                }  
             }
         }
         finally

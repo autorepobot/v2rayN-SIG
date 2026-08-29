@@ -324,6 +324,7 @@ public class UpdateService(Config config, Func<bool, string, Task> updateFunc)
             {
                 Architecture.Arm64 => coreInfo?.DownloadUrlWinArm64,
                 Architecture.X64 => coreInfo?.DownloadUrlWin64,
+                Architecture.X86 => coreInfo?.DownloadUrlWin86,
                 _ => null,
             };
 
@@ -347,6 +348,7 @@ public class UpdateService(Config config, Func<bool, string, Task> updateFunc)
                 Architecture.Arm64 => coreInfo?.DownloadUrlLinuxArm64,
                 Architecture.RiscV64 => coreInfo?.DownloadUrlLinuxRiscV64,
                 Architecture.LoongArch64 => coreInfo?.DownloadUrlLinuxLoong64,
+                Architecture.Ppc64le => coreInfo?.DownloadUrlLinuxPpc64le,
                 Architecture.X64 => coreInfo?.DownloadUrlLinux64,
                 _ => null,
             };
