@@ -297,8 +297,7 @@ public partial class CoreConfigV2rayService
                             secretKey = _node.Password,
                             reserved = Utils.String2List(protocolExtra.WgReserved)?.Select(s => s.Trim()).Select(int.Parse).ToList(),
                             mtu = protocolExtra.WgMtu > 0 ? protocolExtra.WgMtu : Global.TunMtus.First(),
-                            remoteDNS = Utils.String2List(protocolExtra.WgDns)?.Select(s => s.Trim()).ToList(),
-                            peers = [peer],
+                            peers = [peer]
                         };
                         outbound.settings = setting;
                         outbound.settings.vnext = null;
