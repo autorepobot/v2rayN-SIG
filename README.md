@@ -1,34 +1,40 @@
-# v2rayN
-
-### A GUI client for Windows, Linux and macOS. Support [Xray](https://github.com/XTLS/Xray-core) and [sing-box](https://github.com/SagerNet/sing-box) and [others](https://github.com/2dust/v2rayN/wiki/List-of-supported-cores)
-
-[![CodeFactor](https://www.codefactor.io/repository/github/2dust/v2rayn/badge)](https://www.codefactor.io/repository/github/2dust/v2rayn)
-[![Release](https://img.shields.io/github/v/release/2dust/v2rayN?logo=github&label=Release)](https://github.com/2dust/v2rayN/releases)
-[![Downloads](https://img.shields.io/github/downloads/2dust/v2rayN/latest/total?logo=github&label=Downloads)](https://github.com/2dust/v2rayN/releases)
-[![Telegram](https://img.shields.io/badge/Telegram-Chat-26A5E4?logo=telegram)](https://t.me/v2rayn)
- 
-[![Windows](https://img.shields.io/badge/Windows-supported-0078D6?logo=windows)](https://github.com/2dust/v2rayN) 
-[![Linux](https://img.shields.io/badge/Linux-supported-FCC624?logo=linux&logoColor=000)](https://github.com/2dust/v2rayN) 
-[![macOS](https://img.shields.io/badge/macOS-supported-000000?logo=apple)](https://github.com/2dust/v2rayN) 
-[![GPG Signed](https://img.shields.io/badge/GPG-signed-4B32C3?logo=gnuprivacyguard)](https://github.com/2dust/v2rayN)
+<h1 align="left">
+  <a href="https://copr.fedorainfracloud.org/coprs/repobot/v2rayN/">
+    <img align="right" width="40" height="40" alt="71692442" src="https://github.com/user-attachments/assets/cf80f7c7-2ae6-4068-bdb1-dbfc618e5f87" />
+  </a>
+  <b>v2rayN</b><br>
+  <a href="https://github.com/autorepobot/v2rayN-SIG/">
+    <img width="36" height="36" alt="SIG" src="https://github.com/user-attachments/assets/baf4a815-cec7-4803-9596-02a283907b0a" />
+  </a>
+</h1>
 
 
----
+<p align="center">
+  <img width="100" height="100" alt="22bfdnbbcmhj11" src="https://github.com/user-attachments/assets/812c6386-85d2-471a-b1c7-26a428140db2" />
+</p>
 
-## Download / 下载
+<h1 align="center">
+  <font color="#30A2E7">It's Your Proxy Software</font>
+</h1>
 
-Download the latest release here:
+<h2 align="center">
+  <font color="#B02345">v2rayN SIG is an innovative Proxy Client for Windows, macOS and Linux, built with passion for a free and open web.</font>
+</h2>
 
-在这里下载最新版本：
+<p align="center">
+  <a href="https://www.redhat.com/"><img width="50" height="50" alt="redhat-icon" src="https://github.com/user-attachments/assets/3fa9185d-1f58-431f-9c04-6401dca0f3c2" /></a>&nbsp;&nbsp;
+  <a href="https://fedoraproject.org/"><img width="50" height="50" alt="fedora-icon" src="https://github.com/user-attachments/assets/7ed237d7-efe8-4ceb-a826-bf6a31015844" /></a>&nbsp;&nbsp;
+  <a href="https://www.debian.org/"><img width="44.4" height="51.2" alt="debian-icon" src="https://github.com/user-attachments/assets/32a977c8-0577-4716-84ed-4a2b16637816" /></a>&nbsp;&nbsp;
+  <a href="https://ubuntu.com/"><img width="50" height="50" alt="ubuntu-icon" src="https://github.com/user-attachments/assets/d6a6f71d-76c3-47fc-997a-a4a8437443f8" /></a>&nbsp;&nbsp;
+  <a href="https://www.apple.com/macos/"><img width="50" height="50" alt="macos-icon" src="https://github.com/user-attachments/assets/162e0577-0c35-447c-8706-0b39f1a6fb52" /></a>&nbsp;&nbsp;
+  <a href="https://www.microsoft.com/windows"><img width="49" height="49" alt="windows-icon" src="https://github.com/user-attachments/assets/a7cd134d-5dc1-4473-b90f-bf4b49411812" /></a>
+</p>
 
-[https://github.com/2dust/v2rayN/releases](https://github.com/2dust/v2rayN/releases)
-
-
-> [!TIP]
-> v2rayN is the desktop version. For the mobile version, please visit the v2rayNG \
-> v2rayN 是电脑版，手机版请访问 v2rayNG
->
-> https://github.com/2dust/v2rayNG
+<p align="center">
+  <a href="https://github.com/autorepobot/v2rayN-SIG/releases">
+    <img width="200" alt="download" src="https://github.com/user-attachments/assets/3dcf0895-72de-4fa4-9780-5bedc888a1b0" />
+  </a>
+</p>
 
 ---
 
@@ -44,13 +50,11 @@ Read the Wiki for usage guides and configuration details.
 
 ## Supported Platforms / 支持平台
 
-| Platform / 平台 | x64 | x86 | arm64 | riscv64 | loong64 |
-| --- | --- | --- | --- | --- | --- |
-| Windows | ✅ | ✅ | ✅ | - | - |
-| Linux | ✅ | - | ✅ | ✅ | ✅ |
-| macOS | ✅ | - | ✅ | - | - |
-
-Minimum OS requirements: [Release files introduction](https://github.com/2dust/v2rayN/wiki/Release-files-introduction) / 最低系统要求：[发布文件介绍](https://github.com/2dust/v2rayN/wiki/Release-files-introduction)
+| Platform / 平台 | x64 | x86 | arm64 | riscv64 | loong64 | ppc64le |
+| --- | :---: | :---: | :---: | :---: | :---: | :---: |
+| Windows | <img width="17" height="17" alt="ture" src="https://github.com/user-attachments/assets/f81b406b-c671-405c-899d-a851fd0639ee" /> | <img width="17" height="17" alt="ture" src="https://github.com/user-attachments/assets/f81b406b-c671-405c-899d-a851fd0639ee" /> | <img width="17" height="17" alt="ture" src="https://github.com/user-attachments/assets/f81b406b-c671-405c-899d-a851fd0639ee" /> | - | - | - |
+| Linux | <img width="17" height="17" alt="ture" src="https://github.com/user-attachments/assets/f81b406b-c671-405c-899d-a851fd0639ee" /> | - | <img width="17" height="17" alt="ture" src="https://github.com/user-attachments/assets/f81b406b-c671-405c-899d-a851fd0639ee" /> | <img width="17" height="17" alt="ture" src="https://github.com/user-attachments/assets/f81b406b-c671-405c-899d-a851fd0639ee" /> | <img width="17" height="17" alt="ture" src="https://github.com/user-attachments/assets/f81b406b-c671-405c-899d-a851fd0639ee" /> | <img width="17" height="17" alt="ture" src="https://github.com/user-attachments/assets/f81b406b-c671-405c-899d-a851fd0639ee" /> |
+| macOS | <img width="17" height="17" alt="ture" src="https://github.com/user-attachments/assets/f81b406b-c671-405c-899d-a851fd0639ee" /> | - | <img width="17" height="17" alt="ture" src="https://github.com/user-attachments/assets/f81b406b-c671-405c-899d-a851fd0639ee" /> | - | - | - |
 
 ---
 
@@ -63,18 +67,8 @@ Release files are signed with GPG to verify authenticity and integrity, helping 
 ### Fingerprint / 公钥指纹
 
 ```text
-7694 5E9F 3E9A 168F 8070 F195 805D 661C
-134D FAF6 8903 C199 463C 31E5 AE90 3AE0
+C80B 1F80 3068 785F 81C2 3F3D 089B DD8E
+2509 6E70 C0B6 94B0 82E1 401F 8BF3 D4C6
 ```
 
 ---
-
-## Community / 社区
-
-Telegram Group / Telegram 群组：
-
-[https://t.me/v2rayN](https://t.me/v2rayN)
-
-Telegram Channel / Telegram 频道：
-
-[https://t.me/github_2dust](https://t.me/github_2dust)
