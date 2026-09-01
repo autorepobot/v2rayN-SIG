@@ -1,0 +1,13 @@
+diff --git a/v2rayN/v2rayN.Desktop/Views/MainWindow.axaml.cs b/v2rayN/v2rayN.Desktop/Views/MainWindow.axaml.cs
+index a4bb644a65f..d76013781de 100644
+--- a/v2rayN/v2rayN.Desktop/Views/MainWindow.axaml.cs
++++ b/v2rayN/v2rayN.Desktop/Views/MainWindow.axaml.cs
+@@ -445,6 +445,8 @@ private void UpdateLayout(EGirdOrientation orientation)
+                 break;
+         }
+ 
++        ViewModel?.TabMainSelectedIndex = 0;
++
+         RestoreUI();
+     }
+ 

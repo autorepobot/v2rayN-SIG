@@ -1,0 +1,13 @@
+diff --git a/v2rayN/ServiceLib/Global.cs b/v2rayN/ServiceLib/Global.cs
+index a260560eef..e6a85ccbb4 100644
+--- a/v2rayN/ServiceLib/Global.cs
++++ b/v2rayN/ServiceLib/Global.cs
+@@ -645,7 +645,7 @@ public class Global
+         { ECoreType.overtls, "ShadowsocksR-Live/overtls" },
+         { ECoreType.shadowquic, "spongebob888/shadowquic" },
+         { ECoreType.mieru, "enfein/mieru" },
+-        { ECoreType.v2rayN, "2dust/v2rayN" },
++        { ECoreType.v2rayN, "autorepobot/v2rayN-SIG" },
+     };
+ 
+     public static readonly List<string> OtherGeoUrls =
