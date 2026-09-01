@@ -445,8 +445,6 @@ public partial class MainWindow : WindowBase<MainWindowViewModel>
                 break;
         }
 
-        ViewModel?.TabMainSelectedIndex = 0;
-
         RestoreUI();
     }
 
