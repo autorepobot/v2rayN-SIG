@@ -445,7 +445,18 @@ public partial class MainWindow : WindowBase<MainWindowViewModel>
                 break;
         }
 
-        ViewModel?.TabMainSelectedIndex = 0;
+        // workaround
+        Task.Run(async () =>
+        {
+            await Task.Delay(5000);
+            Dispatcher.UIThread.Post(() =>
+            {
+                ViewModel?.TabMainSelectedIndex = 0;
+                tabMain.SelectedIndex = 0;
+                tabMain1.SelectedIndex = 0;
+                tabMain2.SelectedIndex = 0;
+            });
+        });
 
         RestoreUI();
     }
