@@ -81,3 +81,7 @@ This repository is available on Fedora Copr, supporting Fedora Linux, Red Hat En
 https://copr.fedorainfracloud.org/coprs/repobot/v2rayN/
 
 ---
+
+### Thanks / 致谢
+
+@2dust https://github.com/2dust/
