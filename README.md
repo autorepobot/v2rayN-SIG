@@ -82,6 +82,6 @@ https://copr.fedorainfracloud.org/coprs/repobot/v2rayN/
 
 ---
 
-### Thanks / 致谢
+## Thanks / 致谢
 
 @2dust https://github.com/2dust/
