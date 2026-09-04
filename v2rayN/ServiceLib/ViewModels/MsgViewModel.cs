@@ -22,18 +22,16 @@ public partial class MsgViewModel : MyReactiveObject
         AutoRefresh = _config.MsgUIItem.AutoRefresh ?? true;
 
         this.WhenAnyValue(
-           x => x.MsgFilter)
-               .Subscribe(c => DoMsgFilter());
+                x => x.MsgFilter)
+            .Subscribe(c => DoMsgFilter());
 
-        this.WhenAnyValue(
-          x => x.AutoRefresh,
-          y => y == true)
-              .Subscribe(c => _config.MsgUIItem.AutoRefresh = AutoRefresh);
+        this.WhenAnyValue(x => x.AutoRefresh)
+            .Subscribe(_ => _config.MsgUIItem.AutoRefresh = AutoRefresh);
 
         AppEvents.SendMsgViewRequested
-         .AsObservable()
-         //.ObserveOn(RxSchedulers.MainThreadScheduler)
-         .Subscribe(content => _ = AppendQueueMsg(content));
+            .AsObservable()
+            //.ObserveOn(RxSchedulers.MainThreadScheduler)
+            .Subscribe(content => _ = AppendQueueMsg(content));
     }
 
     public void FlushQueueMsg()
@@ -70,21 +68,16 @@ public partial class MsgViewModel : MyReactiveObject
                 sb.Append(line);
             }
 
-            if (sb.Length > 0)  
-            {  
-                try  
-                {  
-                    await DispatcherShowMsgInteraction.Handle(sb.ToString());  
-                }  
-                catch (UnhandledInteractionException<string, RxVoid> ex)  
-                {   
-                    Logging.SaveLog($"Unhandled interaction exception in {nameof(AppendQueueMsg)}", ex);  
-                    _queueMsg.Enqueue(sb.ToString());  
-                }  
-                catch (Exception ex)  
-                {  
-                    Logging.SaveLog($"Exception occurred while handling interaction in {nameof(AppendQueueMsg)}", ex);  
-                }  
+            if (sb.Length > 0)
+            {
+                try
+                {
+                    await DispatcherShowMsgInteraction.Handle(sb.ToString());
+                }
+                catch
+                {
+                    _queueMsg.Enqueue(sb.ToString());
+                }
             }
         }
         finally
