@@ -1,105 +1,102 @@
-name: Bug 报告 / Bug Report
-description: 提交前请确认已排除服务器端问题、已更新到最新客户端、并搜索确认没有重复问题。
-  Before submitting, please rule out server-side issues, update to the latest client, and search for duplicates.
+name: Bug 报告
+description: 在提出问题前请先自行排除服务器端问题和升级到最新客户端，同时也请通过搜索确认是否有人提出过相同问题。
 title: "[Bug]: "
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        ### 提交前请确认<br><sub>Before you submit</sub>
-
-        - ✔︎ 已自行排除服务器端问题<br>&nbsp;&nbsp;&nbsp;&nbsp;Server-side issues have been ruled out
-        - ✔︎ 已升级到最新客户端版本<br>&nbsp;&nbsp;&nbsp;&nbsp;Updated to the latest client version
-        - ✔︎ 已搜索确认没有重复的 issue<br>&nbsp;&nbsp;&nbsp;&nbsp;Searched and confirmed no duplicate issue exists
-        - ✔︎ 已确认系统环境受支持<br>&nbsp;&nbsp;&nbsp;&nbsp;Confirmed the OS environment is supported
+        ### 报告 Bug 前请务必确认以下事项：
+        > ** **
+        > **✓ 已自行排除服务器端问题。**
+        > **✓ 已升级到最新客户端版本。**
+        > **✓ 已通过搜索确认没有人提出过相同问题。**
+        > **✓ 已确认自己的电脑系统环境是受支持的。**
 
         ---
 
   - type: input
-    id: os-version
+    id: "os-version"
     attributes:
       label: "操作系统 / v2rayN / Core 版本"
-      description: "Operating System / v2rayN / Core Version"
+      description: "操作系统 / v2rayN / Core 版本"
     validations:
       required: true
 
   - type: input
-    id: expectation
+    id: "expectation"
     attributes:
       label: "预期情况"
-      description: "Expected behavior"
+      description: "描述你认为应该发生什么"
     validations:
       required: true
 
   - type: textarea
-    id: describe-the-bug
+    id: "describe-the-bug"
     attributes:
       label: "实际情况"
-      description: "Actual behavior"
+      description: "描述实际发生了什么"
     validations:
       required: true
 
   - type: textarea
-    id: reproduction-method
+    id: "reproduction-method"
     attributes:
       label: "复现方法"
-      description: "Steps to reproduce"
-      placeholder: "1. ...\n2. ...\n3. ..."
+      description: "在BUG出现前执行了哪些操作"
+      placeholder: "标序号"
     validations:
       required: true
 
   - type: textarea
-    id: gui-log
+    id: "gui-log"
     attributes:
       label: "软件日志"
-      description: "GUI Log"
-      placeholder: |
-        位置：软件目录下的 guiLogs / Location: guiLogs folder in the app directory
-        粘贴日志内容 / Paste log content here
+      description: "位置在软件当前目录下的guiLogs"
+      placeholder: "在日志开始和结束位置粘贴冒号后的内容到这："
     validations:
       required: true
 
   - type: textarea
-    id: core-log
+    id: "core-log"
     attributes:
       label: "内核日志"
-      description: "Core Log"
-      placeholder: |
-        位置：主界面信息框 / Location: info panel on the main window
-        粘贴日志内容 / Paste log content here
+      description: "位置在软件主界面的信息框内"
+      placeholder: "在信息框内鼠标右键复制全部信息粘贴在这："
     validations:
       required: true
 
   - type: textarea
-    id: more
+    id: "more"
     attributes:
       label: "额外信息"
-      description: "Additional Information"
-      placeholder: "可选 / Optional"
+      description: "可选"
     validations:
       required: false
 
   - type: checkboxes
-    id: latest-version
+    id: "latest-version"
     attributes:
-      label: "已更新至最新版本 / Updated to latest version"
+      label: "我确认已更新至最新版本"
+      description: "否则请更新后尝试"
       options:
-        - label: 是 / Yes
+        - label: 是
           required: true
 
   - type: checkboxes
-    id: issues
+    id: "issues"
     attributes:
-      label: "已查询历史 issues / Checked existing issues"
+      label: "我确认已查询历史issues"
+      description: "否则请查询后提出"
       options:
-        - label: 是 / Yes
+        - label: 是
           required: true
 
   - type: checkboxes
-    id: system-version
+    id: "system-version"
     attributes:
-      label: "系统版本受支持 / System version is supported"
+      label: "我确认系统版本是受支持的"
+      description: "否则请切换后尝试"
       options:
-        - label: 是 / Yes
+        - label: 是
           required: true

@@ -10,8 +10,6 @@ public class CoreInfo
     public string? ReleaseApiUrl { get; set; }
     public string? DownloadUrlWin64 { get; set; }
     public string? DownloadUrlWinArm64 { get; set; }
-    public string? DownloadUrlWin86 { get; set; }
-    public string? DownloadUrlLinuxPpc64le { get; set; }
     public string? DownloadUrlLinux64 { get; set; }
     public string? DownloadUrlLinuxArm64 { get; set; }
     public string? DownloadUrlLinuxRiscV64 { get; set; }
