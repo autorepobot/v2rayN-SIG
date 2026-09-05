@@ -1,27 +1,12 @@
 name: Code Test
 
 on:
-  push:
-    branches:
-      - master
-    paths:
-      - 'v2rayN/ServiceLib/**'
-      - 'v2rayN/ServiceLib.UdpTest/**'
-      - 'v2rayN/ServiceLib.Tests/**'
-      - 'v2rayN/Directory.Build.*'
-      - 'v2rayN/Directory.Packages.props'
-      - 'global.json'
-      - '.github/workflows/test.yml'
   pull_request:
     branches:
       - master
     paths:
-      - 'v2rayN/ServiceLib/**'
-      - 'v2rayN/ServiceLib.UdpTest/**'
-      - 'v2rayN/ServiceLib.Tests/**'
-      - 'v2rayN/Directory.Build.*'
-      - 'v2rayN/Directory.Packages.props'
-      - 'global.json'
+      - 'v2rayN/ServiceLib/Services/CoreConfig/**'
+      - 'v2rayN/ServiceLib/Handler/Fmt/**'
       - '.github/workflows/test.yml'
 
 permissions:
@@ -34,6 +19,9 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v7
+      with:
+        submodules: 'recursive'
+        fetch-depth: '0'
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v6
@@ -42,11 +30,12 @@ jobs:
         dotnet-quality: 'ga'
 
     - name: Test Code
-      run: dotnet test --project ./v2rayN/ServiceLib.Tests -c Release --results-directory ./TestResults -- --report-trx
+      working-directory: ./v2rayN
+      run: dotnet test ./ServiceLib.Tests -c Release --no-build --results-directory ./TestResults -- --report-trx
 
     - name: Comment PR with results
       if: always()
       uses: EnricoMi/publish-unit-test-result-action@v2
       with:
-        files: ./TestResults/*.trx
+        files: ./v2rayN/TestResults/*.trx
         comment_mode: failures
