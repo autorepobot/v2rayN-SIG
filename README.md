@@ -8,6 +8,10 @@
   </a>
 </h1>
 
+> [!NOTE]
+> Due to unstable Xray-core updates, SIG members cannot track changes, so v2rayN SIG only includes Sing-box \
+> 因 Xray-core 的持续不稳定更改，SIG 成员没有精力跟踪变更，因此 v2rayN SIG 版仅内置Sing-box
+
 <p align="center">
   <img width="100" height="100" alt="v2rayN" src="https://github.com/user-attachments/assets/2e0625e4-eb05-4d9b-8d05-cc900235d4bd" />
 </p>
