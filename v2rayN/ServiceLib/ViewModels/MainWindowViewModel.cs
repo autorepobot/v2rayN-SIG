@@ -695,7 +695,7 @@ public partial class MainWindowViewModel : MyReactiveObject
                 {
                     return;
                 }
-               
+
                 await ProfilesViewModel.SetSpeedTestResult(new()
                 {
                     IndexId = profileItem.IndexId,
@@ -734,23 +734,16 @@ public partial class MainWindowViewModel : MyReactiveObject
         }
     }
 
-    private bool _hasAutoSelectedForSingBox = false;  
-  
-    private void ReloadResult(bool showClashUI)  
-    {  
-        RxSchedulers.MainThreadScheduler.Schedule(() =>  
-        {  
-            ShowClashUI = showClashUI;  
-            if (showClashUI && !_hasAutoSelectedForSingBox)  
-            {  
-                TabMainSelectedIndex = 0;  
-                _hasAutoSelectedForSingBox = true;  
-            }  
-            else if (!showClashUI)  
-            {  
-                TabMainSelectedIndex = 0;  
-            }  
-        });  
+    private void ReloadResult(bool showClashUI)
+    {
+        RxSchedulers.MainThreadScheduler.Schedule(() =>
+        {
+            ShowClashUI = showClashUI;
+            if (!showClashUI || TabMainSelectedIndex < 0)
+            {
+                TabMainSelectedIndex = 0;
+            }
+        });
     }
 
     private void SetReloadEnabled(bool enabled)
