@@ -1,0 +1,35 @@
+diff --git a/v2rayN/ServiceLib/ViewModels/MainWindowViewModel.cs b/v2rayN/ServiceLib/ViewModels/MainWindowViewModel.cs
+index d167a02a4..599b6f2a6 100644
+--- a/v2rayN/ServiceLib/ViewModels/MainWindowViewModel.cs
++++ b/v2rayN/ServiceLib/ViewModels/MainWindowViewModel.cs
+@@ -712,13 +712,23 @@ await Task.Run(async () =>
+         }
+     }
+ 
+-    private void ReloadResult(bool showClashUI)
+-    {
+-        RxSchedulers.MainThreadScheduler.Schedule(() =>
+-        {
+-            ShowClashUI = showClashUI;
+-            TabMainSelectedIndex = showClashUI ? TabMainSelectedIndex : 0;
+-        });
++    private bool _hasAutoSelectedForSingBox = false;  
++  
++    private void ReloadResult(bool showClashUI)  
++    {  
++        RxSchedulers.MainThreadScheduler.Schedule(() =>  
++        {  
++            ShowClashUI = showClashUI;  
++            if (showClashUI && !_hasAutoSelectedForSingBox)  
++            {  
++                TabMainSelectedIndex = 0;  
++                _hasAutoSelectedForSingBox = true;  
++            }  
++            else if (!showClashUI)  
++            {  
++                TabMainSelectedIndex = 0;  
++            }  
++        });  
+     }
+ 
+     private void SetReloadEnabled(bool enabled)
