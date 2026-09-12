@@ -26,6 +26,9 @@ public partial class AddServerViewModel : MyReactiveObject, ICloseable
     public partial string CertSha { get; set; }
 
     [Reactive]
+    public partial string CertPubKeySha { get; set; }
+
+    [Reactive]
     public partial string SalamanderPass { get; set; }
 
     [Reactive]
@@ -268,6 +271,9 @@ public partial class AddServerViewModel : MyReactiveObject, ICloseable
         this.WhenAnyValue(x => x.CertSha)
             .Subscribe(_ => UpdateCertTip());
 
+        this.WhenAnyValue(x => x.CertPubKeySha)
+            .Subscribe(_ => UpdateCertTip());
+        
         this.WhenAnyValue(x => x.SelectedSource.Network)
             .Subscribe(_ =>
             {
@@ -295,6 +301,7 @@ public partial class AddServerViewModel : MyReactiveObject, ICloseable
         MuxEnabled = SelectedSource?.MuxEnabled == true;
         Cert = SelectedSource?.Cert ?? string.Empty;
         CertSha = SelectedSource?.CertSha ?? string.Empty;
+        CertPubKeySha = SelectedSource?.CertPubKeySha ?? string.Empty;
 
         var protocolExtra = SelectedSource?.GetProtocolExtra() ?? new();
         var transport = SelectedSource?.GetTransportExtra() ?? new();
@@ -397,6 +404,7 @@ public partial class AddServerViewModel : MyReactiveObject, ICloseable
         SelectedSource.MuxEnabled = MuxEnabled;
         SelectedSource.Cert = Cert.IsNullOrEmpty() ? string.Empty : Cert;
         SelectedSource.CertSha = CertSha.IsNullOrEmpty() ? string.Empty : CertSha;
+        SelectedSource.CertPubKeySha = CertPubKeySha.IsNullOrEmpty() ? string.Empty : CertPubKeySha;
         if (!Global.Networks.Contains(SelectedSource.Network))
         {
             SelectedSource.Network = Global.DefaultNetwork;
@@ -460,7 +468,7 @@ public partial class AddServerViewModel : MyReactiveObject, ICloseable
     private void UpdateCertTip(string? errorMessage = null)
     {
         CertTip = errorMessage.IsNullOrEmpty()
-            ? ((Cert.IsNullOrEmpty() && CertSha.IsNullOrEmpty()) ? ResUI.CertNotSet : ResUI.CertSet)
+            ? ((Cert.IsNullOrEmpty() && CertSha.IsNullOrEmpty() && CertPubKeySha.IsNullOrEmpty()) ? ResUI.CertNotSet : ResUI.CertSet)
             : errorMessage;
     }
 
