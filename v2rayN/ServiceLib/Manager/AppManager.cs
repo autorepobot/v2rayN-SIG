@@ -671,7 +671,7 @@ public sealed class AppManager
         }
 
         var item = _config.CoreTypeItem?.FirstOrDefault(it => it.ConfigType == eConfigType);
-        return item?.CoreType ?? ECoreType.sing_box;
+        return item?.CoreType ?? ECoreType.Xray;
     }
 
     #endregion Core Type
