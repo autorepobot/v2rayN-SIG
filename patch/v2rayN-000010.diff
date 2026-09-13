@@ -1,0 +1,249 @@
+diff --git a/v2rayN/ServiceLib/Handler/Builder/NodeValidator.cs b/v2rayN/ServiceLib/Handler/Builder/NodeValidator.cs
+index 6ac5002a9c1..4da77e807b4 100644
+--- a/v2rayN/ServiceLib/Handler/Builder/NodeValidator.cs
++++ b/v2rayN/ServiceLib/Handler/Builder/NodeValidator.cs
+@@ -137,7 +137,8 @@ private static void ValidateNodeAndCoreSupport(ProfileItem item, ECoreType coreT
+                 && item.CertSha.IsNullOrEmpty())
+                 || (coreType == ECoreType.sing_box
+                     && item.GetAllowInsecure()
+-                    && !isCertProvided))
++                    && !isCertProvided
++                    && item.CertPubKeySha.IsNullOrEmpty()))
+             {
+                 if (coreType == ECoreType.Xray)
+                 {
+diff --git a/v2rayN/ServiceLib/Handler/ConfigHandler.cs b/v2rayN/ServiceLib/Handler/ConfigHandler.cs
+index be64ca8b7f4..23f526962cf 100644
+--- a/v2rayN/ServiceLib/Handler/ConfigHandler.cs
++++ b/v2rayN/ServiceLib/Handler/ConfigHandler.cs
+@@ -275,6 +275,7 @@ public static async Task<int> AddServer(Config config, ProfileItem profileItem)
+             item.MuxEnabled = profileItem.MuxEnabled;
+             item.Cert = profileItem.Cert;
+             item.CertSha = profileItem.CertSha;
++            item.CertPubKeySha = profileItem.CertPubKeySha;
+             item.EchConfigList = profileItem.EchConfigList;
+             item.VerifyPeerCertByName = profileItem.VerifyPeerCertByName;
+             item.Finalmask = profileItem.Finalmask;
+diff --git a/v2rayN/ServiceLib/Models/CoreConfigs/SingboxConfig.cs b/v2rayN/ServiceLib/Models/CoreConfigs/SingboxConfig.cs
+index a835b15f05e..2159b84d96c 100644
+--- a/v2rayN/ServiceLib/Models/CoreConfigs/SingboxConfig.cs
++++ b/v2rayN/ServiceLib/Models/CoreConfigs/SingboxConfig.cs
+@@ -190,6 +190,7 @@ public class Tls4Sbox
+     public string? fragment_fallback_delay { get; set; }
+     public bool? record_fragment { get; set; }
+     public List<string>? certificate { get; set; }
++    public List<string>? certificate_public_key_sha256 { get; set; }
+     public Ech4Sbox? ech { get; set; }
+ }
+ 
+diff --git a/v2rayN/ServiceLib/Models/Entities/ProfileItem.cs b/v2rayN/ServiceLib/Models/Entities/ProfileItem.cs
+index 375f43f6d2b..aa3cb1f6bea 100644
+--- a/v2rayN/ServiceLib/Models/Entities/ProfileItem.cs
++++ b/v2rayN/ServiceLib/Models/Entities/ProfileItem.cs
+@@ -195,6 +195,7 @@ public bool GetAllowInsecure()
+     public bool? MuxEnabled { get; set; }
+     public string Cert { get; set; }
+     public string CertSha { get; set; }
++    public string CertPubKeySha { get; set; }
+     public string EchConfigList { get; set; }
+     public string VerifyPeerCertByName { get; set; }
+     public string Finalmask { get; set; }
+diff --git a/v2rayN/ServiceLib/Resx/ResUI.Designer.cs b/v2rayN/ServiceLib/Resx/ResUI.Designer.cs
+index 3b654b116bb..5b65381fb4f 100644
+--- a/v2rayN/ServiceLib/Resx/ResUI.Designer.cs
++++ b/v2rayN/ServiceLib/Resx/ResUI.Designer.cs
+@@ -2879,6 +2879,15 @@ public static string TbCertSha256Tips {
+                 return ResourceManager.GetString("TbCertSha256Tips", resourceCulture);
+             }
+         }
++
++        /// <summary>
++        ///   查找类似 Public key SHA-256 (Base64), sing-box only 的本地化字符串。
++        /// </summary>
++        public static string TbCertPubKeySha256Tips {
++            get {
++                return ResourceManager.GetString("TbCertPubKeySha256Tips", resourceCulture);
++            }
++        }
+         
+         /// <summary>
+         ///   查找类似 Clear system proxy 的本地化字符串。
+diff --git a/v2rayN/ServiceLib/Resx/ResUI.fr.resx b/v2rayN/ServiceLib/Resx/ResUI.fr.resx
+index b86d96b0f40..73cb362eaa8 100644
+--- a/v2rayN/ServiceLib/Resx/ResUI.fr.resx
++++ b/v2rayN/ServiceLib/Resx/ResUI.fr.resx
+@@ -1617,6 +1617,9 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
+   <data name="TbCertSha256Tips" xml:space="preserve">
+     <value>Empreinte du certificat (SHA-256)</value>
+   </data>
++  <data name="TbCertPubKeySha256Tips" xml:space="preserve">
++    <value>Clé publique SHA-256 (Base64), sing-box uniquement</value>
++  </data>
+   <data name="TbServeStale" xml:space="preserve">
+     <value>Cache optimiste</value>
+   </data>
+diff --git a/v2rayN/ServiceLib/Resx/ResUI.resx b/v2rayN/ServiceLib/Resx/ResUI.resx
+index f0de8ad6552..07f17867e6c 100644
+--- a/v2rayN/ServiceLib/Resx/ResUI.resx
++++ b/v2rayN/ServiceLib/Resx/ResUI.resx
+@@ -1629,6 +1629,9 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
+   <data name="TbCertSha256Tips" xml:space="preserve">
+     <value>Certificate fingerprint (SHA-256)</value>
+   </data>
++  <data name="TbCertPubKeySha256Tips" xml:space="preserve">
++    <value>Public key SHA-256 (Base64), sing-box only</value>
++  </data>
+   <data name="TbServeStale" xml:space="preserve">
+     <value>Serve Stale</value>
+   </data>
+diff --git a/v2rayN/ServiceLib/Resx/ResUI.zh-Hans.resx b/v2rayN/ServiceLib/Resx/ResUI.zh-Hans.resx
+index 1dfc03781c8..d04f6dc743f 100644
+--- a/v2rayN/ServiceLib/Resx/ResUI.zh-Hans.resx
++++ b/v2rayN/ServiceLib/Resx/ResUI.zh-Hans.resx
+@@ -1623,6 +1623,9 @@
+   <data name="TbCertSha256Tips" xml:space="preserve">
+     <value>证书指纹（SHA-256）</value>
+   </data>
++  <data name="TbCertPubKeySha256Tips" xml:space="preserve">
++    <value>公钥 SHA-256 (Base64), 仅 Sing-box</value>
++  </data>
+   <data name="TbServeStale" xml:space="preserve">
+     <value>乐观缓存</value>
+   </data>
+diff --git a/v2rayN/ServiceLib/Services/CoreConfig/Singbox/SingboxOutboundService.cs b/v2rayN/ServiceLib/Services/CoreConfig/Singbox/SingboxOutboundService.cs
+index 83f43d2ff18..524ee3ea6aa 100644
+--- a/v2rayN/ServiceLib/Services/CoreConfig/Singbox/SingboxOutboundService.cs
++++ b/v2rayN/ServiceLib/Services/CoreConfig/Singbox/SingboxOutboundService.cs
+@@ -460,6 +460,13 @@ private void FillOutboundTls(Outbound4Sbox outbound)
+                     tls.certificate = certs;
+                     tls.insecure = false;
+                 }
++                else if (!_node.CertPubKeySha.IsNullOrEmpty())
++                {
++                    tls.certificate_public_key_sha256 = _node.CertPubKeySha
++                        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
++                        .ToList();
++                    tls.insecure = false;
++                }
+             }
+             else if (_node.StreamSecurity == Global.StreamSecurityReality)
+             {
+diff --git a/v2rayN/ServiceLib/ViewModels/AddServerViewModel.cs b/v2rayN/ServiceLib/ViewModels/AddServerViewModel.cs
+index 3f01261dcf7..32d9b1b8ebe 100644
+--- a/v2rayN/ServiceLib/ViewModels/AddServerViewModel.cs
++++ b/v2rayN/ServiceLib/ViewModels/AddServerViewModel.cs
+@@ -25,6 +25,9 @@ public partial class AddServerViewModel : MyReactiveObject, ICloseable
+     [Reactive]
+     public partial string CertSha { get; set; }
+ 
++    [Reactive]
++    public partial string CertPubKeySha { get; set; }
++
+     [Reactive]
+     public partial string SalamanderPass { get; set; }
+ 
+@@ -265,6 +268,9 @@ public AddServerViewModel(ProfileItem profileItem)
+         this.WhenAnyValue(x => x.CertSha)
+             .Subscribe(_ => UpdateCertTip());
+ 
++        this.WhenAnyValue(x => x.CertPubKeySha)
++            .Subscribe(_ => UpdateCertTip());
++        
+         this.WhenAnyValue(x => x.SelectedSource.Network)
+             .Subscribe(_ =>
+             {
+@@ -292,6 +298,7 @@ public AddServerViewModel(ProfileItem profileItem)
+         MuxEnabled = SelectedSource?.MuxEnabled == true;
+         Cert = SelectedSource?.Cert ?? string.Empty;
+         CertSha = SelectedSource?.CertSha ?? string.Empty;
++        CertPubKeySha = SelectedSource?.CertPubKeySha ?? string.Empty;
+ 
+         var protocolExtra = SelectedSource?.GetProtocolExtra() ?? new();
+         var transport = SelectedSource?.GetTransportExtra() ?? new();
+@@ -393,6 +400,7 @@ private async Task SaveServerAsync()
+         SelectedSource.MuxEnabled = MuxEnabled;
+         SelectedSource.Cert = Cert.IsNullOrEmpty() ? string.Empty : Cert;
+         SelectedSource.CertSha = CertSha.IsNullOrEmpty() ? string.Empty : CertSha;
++        SelectedSource.CertPubKeySha = CertPubKeySha.IsNullOrEmpty() ? string.Empty : CertPubKeySha;
+         if (!Global.Networks.Contains(SelectedSource.Network))
+         {
+             SelectedSource.Network = Global.DefaultNetwork;
+@@ -455,7 +463,7 @@ private async Task SaveServerAsync()
+     private void UpdateCertTip(string? errorMessage = null)
+     {
+         CertTip = errorMessage.IsNullOrEmpty()
+-            ? ((Cert.IsNullOrEmpty() && CertSha.IsNullOrEmpty()) ? ResUI.CertNotSet : ResUI.CertSet)
++            ? ((Cert.IsNullOrEmpty() && CertSha.IsNullOrEmpty() && CertPubKeySha.IsNullOrEmpty()) ? ResUI.CertNotSet : ResUI.CertSet)
+             : errorMessage;
+     }
+ 
+diff --git a/v2rayN/v2rayN.Desktop/Views/AddServerWindow.axaml b/v2rayN/v2rayN.Desktop/Views/AddServerWindow.axaml
+index d3d17d9ea6e..5f8329b9503 100644
+--- a/v2rayN/v2rayN.Desktop/Views/AddServerWindow.axaml
++++ b/v2rayN/v2rayN.Desktop/Views/AddServerWindow.axaml
+@@ -1272,6 +1272,17 @@
+                                             Width="400"
+                                             Margin="{StaticResource Margin4}"
+                                             HorizontalAlignment="Left" />
++                                        <TextBlock
++                                            Width="400"
++                                            Margin="{StaticResource Margin4}"
++                                            VerticalAlignment="Center"
++                                            Text="{x:Static resx:ResUI.TbCertPubKeySha256Tips}"
++                                            TextWrapping="Wrap" />
++                                        <TextBox
++                                            x:Name="txtCertPubKeySha256"
++                                            Width="400"
++                                            Margin="{StaticResource Margin4}"
++                                            HorizontalAlignment="Left" />
+                                         <TextBlock
+                                             Width="400"
+                                             Margin="{StaticResource Margin4}"
+diff --git a/v2rayN/v2rayN.Desktop/Views/AddServerWindow.axaml.cs b/v2rayN/v2rayN.Desktop/Views/AddServerWindow.axaml.cs
+index a1d5b22dbdc..ef24b9ecb20 100644
+--- a/v2rayN/v2rayN.Desktop/Views/AddServerWindow.axaml.cs
++++ b/v2rayN/v2rayN.Desktop/Views/AddServerWindow.axaml.cs
+@@ -175,6 +175,7 @@ public AddServerWindow()
+             this.Bind(ViewModel, vm => vm.SelectedSource.Fingerprint, v => v.cmbFingerprint.SelectedValue).DisposeWith(disposables);
+             this.Bind(ViewModel, vm => vm.SelectedSource.Alpn, v => v.cmbAlpn.SelectedValue).DisposeWith(disposables);
+             this.Bind(ViewModel, vm => vm.CertSha, v => v.txtCertSha256Pinning.Text).DisposeWith(disposables);
++            this.Bind(ViewModel, vm => vm.CertPubKeySha, v => v.txtCertPubKeySha256.Text).DisposeWith(disposables);
+             this.Bind(ViewModel, vm => vm.CertTip, v => v.labCertPinning.Text).DisposeWith(disposables);
+             this.Bind(ViewModel, vm => vm.Cert, v => v.txtCert.Text).DisposeWith(disposables);
+             this.Bind(ViewModel, vm => vm.SelectedSource.EchConfigList, v => v.txtEchConfigList.Text).DisposeWith(disposables);
+diff --git a/v2rayN/v2rayN/Views/AddServerWindow.xaml b/v2rayN/v2rayN/Views/AddServerWindow.xaml
+index cd39e7bd119..41730fc1dc5 100644
+--- a/v2rayN/v2rayN/Views/AddServerWindow.xaml
++++ b/v2rayN/v2rayN/Views/AddServerWindow.xaml
+@@ -1601,6 +1601,19 @@
+                                     Margin="{StaticResource Margin4}"
+                                     HorizontalAlignment="Left"
+                                     Style="{StaticResource DefTextBox}" />
++                                <TextBlock
++                                    Width="400"
++                                    Margin="{StaticResource Margin4}"
++                                    VerticalAlignment="Center"
++                                    Style="{StaticResource ToolbarTextBlock}"
++                                    Text="{x:Static resx:ResUI.TbCertPubKeySha256Tips}"
++                                    TextWrapping="Wrap" />
++                                <TextBox
++                                    x:Name="txtCertPubKeySha256"
++                                    Width="400"
++                                    Margin="{StaticResource Margin4}"
++                                    HorizontalAlignment="Left"
++                                    Style="{StaticResource DefTextBox}" />
+                                 <TextBlock
+                                     Width="400"
+                                     Margin="{StaticResource Margin4}"
+diff --git a/v2rayN/v2rayN/Views/AddServerWindow.xaml.cs b/v2rayN/v2rayN/Views/AddServerWindow.xaml.cs
+index 8ae659c0eed..171f7f2e97b 100644
+--- a/v2rayN/v2rayN/Views/AddServerWindow.xaml.cs
++++ b/v2rayN/v2rayN/Views/AddServerWindow.xaml.cs
+@@ -172,6 +172,7 @@ public AddServerWindow()
+             this.Bind(ViewModel, vm => vm.SelectedSource.Fingerprint, v => v.cmbFingerprint.Text).DisposeWith(disposables);
+             this.Bind(ViewModel, vm => vm.SelectedSource.Alpn, v => v.cmbAlpn.Text).DisposeWith(disposables);
+             this.Bind(ViewModel, vm => vm.CertSha, v => v.txtCertSha256Pinning.Text).DisposeWith(disposables);
++            this.Bind(ViewModel, vm => vm.CertPubKeySha, v => v.txtCertPubKeySha256.Text).DisposeWith(disposables);
+             this.Bind(ViewModel, vm => vm.CertTip, v => v.labCertPinning.Text).DisposeWith(disposables);
+             this.Bind(ViewModel, vm => vm.Cert, v => v.txtCert.Text).DisposeWith(disposables);
+             this.Bind(ViewModel, vm => vm.Cert, v => v.txtCert.Text).DisposeWith(disposables);

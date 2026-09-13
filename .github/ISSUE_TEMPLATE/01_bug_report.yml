@@ -1,0 +1,105 @@
+name: Bug 报告 / Bug Report
+description: 提交前请确认已排除服务器端问题、已更新到最新客户端、并搜索确认没有重复问题。
+  Before submitting, please rule out server-side issues, update to the latest client, and search for duplicates.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 提交前请确认<br><sub>Before you submit</sub>
+
+        - ✔︎ 已自行排除服务器端问题<br>&nbsp;&nbsp;&nbsp;&nbsp;Server-side issues have been ruled out
+        - ✔︎ 已升级到最新客户端版本<br>&nbsp;&nbsp;&nbsp;&nbsp;Updated to the latest client version
+        - ✔︎ 已搜索确认没有重复的 issue<br>&nbsp;&nbsp;&nbsp;&nbsp;Searched and confirmed no duplicate issue exists
+        - ✔︎ 已确认系统环境受支持<br>&nbsp;&nbsp;&nbsp;&nbsp;Confirmed the OS environment is supported
+
+        ---
+
+  - type: input
+    id: os-version
+    attributes:
+      label: "操作系统 / v2rayN / Core 版本"
+      description: "Operating System / v2rayN / Core Version"
+    validations:
+      required: true
+
+  - type: input
+    id: expectation
+    attributes:
+      label: "预期情况"
+      description: "Expected behavior"
+    validations:
+      required: true
+
+  - type: textarea
+    id: describe-the-bug
+    attributes:
+      label: "实际情况"
+      description: "Actual behavior"
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction-method
+    attributes:
+      label: "复现方法"
+      description: "Steps to reproduce"
+      placeholder: "1. ...\n2. ...\n3. ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: gui-log
+    attributes:
+      label: "软件日志"
+      description: "GUI Log"
+      placeholder: |
+        位置：软件目录下的 guiLogs / Location: guiLogs folder in the app directory
+        粘贴日志内容 / Paste log content here
+    validations:
+      required: true
+
+  - type: textarea
+    id: core-log
+    attributes:
+      label: "内核日志"
+      description: "Core Log"
+      placeholder: |
+        位置：主界面信息框 / Location: info panel on the main window
+        粘贴日志内容 / Paste log content here
+    validations:
+      required: true
+
+  - type: textarea
+    id: more
+    attributes:
+      label: "额外信息"
+      description: "Additional Information"
+      placeholder: "可选 / Optional"
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: latest-version
+    attributes:
+      label: "已更新至最新版本 / Updated to latest version"
+      options:
+        - label: 是 / Yes
+          required: true
+
+  - type: checkboxes
+    id: issues
+    attributes:
+      label: "已查询历史 issues / Checked existing issues"
+      options:
+        - label: 是 / Yes
+          required: true
+
+  - type: checkboxes
+    id: system-version
+    attributes:
+      label: "系统版本受支持 / System version is supported"
+      options:
+        - label: 是 / Yes
+          required: true
