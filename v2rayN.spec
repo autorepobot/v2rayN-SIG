@@ -4,7 +4,7 @@
 %global __requires_exclude ^liblttng-ust\\.so\\..*$
 
 Name:           v2rayN
-Version:        7.25.0
+Version:        7.25.1
 Release:        1%{?dist}
 Summary:        v2rayN (Avalonia) GUI client for Linux
 License:        GPL-3.0-only
