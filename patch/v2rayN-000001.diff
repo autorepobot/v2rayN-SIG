@@ -1,0 +1,13 @@
+diff --git a/v2rayN/ServiceLib/ViewModels/OptionSettingViewModel.cs b/v2rayN/ServiceLib/ViewModels/OptionSettingViewModel.cs
+index 9131fc4edee..ffb1562fff5 100644
+--- a/v2rayN/ServiceLib/ViewModels/OptionSettingViewModel.cs
++++ b/v2rayN/ServiceLib/ViewModels/OptionSettingViewModel.cs
+@@ -238,7 +238,7 @@ private async Task InitCoreType()
+             _config.CoreTypeItem.Add(new CoreTypeItem()
+             {
+                 ConfigType = it,
+-                CoreType = ECoreType.Xray
++                CoreType = ECoreType.sing_box
+             });
+         }
+         _config.CoreTypeItem.ForEach(it =>
