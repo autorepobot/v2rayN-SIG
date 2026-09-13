@@ -16,12 +16,15 @@ public partial class MsgView : ReactiveUserControl<MsgViewModel>
             this.Bind(ViewModel, vm => vm.MsgFilter, v => v.cmbMsgFilter.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.AutoRefresh, v => v.togAutoRefresh.IsChecked).DisposeWith(disposables);
 
-            ViewModel.ShowMsgInteraction.RegisterHandler(interaction =>
+            ViewModel.DispatcherShowMsgInteraction.RegisterHandler(interaction =>
             {
                 var msg = interaction.Input;
-                ShowMsg(msg);
+                Dispatcher.UIThread.Post(() => ShowMsg(msg),
+                    DispatcherPriority.ApplicationIdle);
                 interaction.SetOutput(RxVoid.Default);
             }).DisposeWith(disposables);
+
+            ViewModel?.FlushQueueMsg();
         });
 
         TextEditorKeywordHighlighter.Attach(txtMsg, Global.LogLevelColors.ToDictionary(
