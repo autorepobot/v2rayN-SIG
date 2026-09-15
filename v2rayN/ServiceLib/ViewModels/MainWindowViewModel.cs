@@ -744,19 +744,12 @@ public partial class MainWindowViewModel : MyReactiveObject
         }
     }
 
-    private bool _hasAutoSelectedForSingBox = false;
-
     private void ReloadResult(bool showClashUI)
     {
         RxSchedulers.MainThreadScheduler.Schedule(() =>
         {
             ShowClashUI = showClashUI;
-            if (showClashUI && !_hasAutoSelectedForSingBox)
-            {
-                TabMainSelectedIndex = 0;
-                _hasAutoSelectedForSingBox = true;
-            }
-            else if (!showClashUI || TabMainSelectedIndex < 0)
+            if (!showClashUI || TabMainSelectedIndex < 0)
             {
                 TabMainSelectedIndex = 0;
             }
