@@ -1,0 +1,96 @@
+name: SIG 群请求 / SIG Group Request
+description: 进群前请找到 SIG 群成员，SIG 群凭邀请进。
+  Before joining, please find a SIG group member. Entry is by invitation only.
+title: "[SIG]: "
+labels: ["SIG"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 提交前请查看<br><sub>Before you submit</sub>
+
+        - ✔︎ SIG 群需要您提供三位群友推荐才能进群，其中一位必须是核心成员。<br>&nbsp;&nbsp;&nbsp;&nbsp;To join the SIG group, three member recommendations are required, including one from a core member.
+        - ✔︎ 我们会要求您创建仓库，通过GitHub Runner 运行 Red Hat UBI 10 搭配 Secret 验证你的身份。<br>&nbsp;&nbsp;&nbsp;&nbsp;We’ll ask you to create a repository and use a GitHub Runner with Red Hat UBI 10 and a secret to verify your identity.
+        - ✔︎ 只有在通过验证且获批准后，我们才会同意你入群。<br>&nbsp;&nbsp;&nbsp;&nbsp;We’ll approve your request to join only after verification is completed and approved.
+
+        ---
+
+  - type: input
+    id: tg-username
+    attributes:
+      label: "Telegram 账号用户名"
+      description: "Username of Telegram account"
+    validations:
+      required: true
+
+  - type: input
+    id: rhel-verify-repository
+    attributes:
+      label: "验证仓库"
+      description: "verify the repository"
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ### 请在仓库保存以下runner文件<br><sub>Please add this runner file to the repository</sub>
+
+        ```yaml
+        name: Verify Red Hat Subscription
+
+        on:
+          workflow_dispatch:
+
+        jobs:
+          verify:
+            runs-on: ubuntu-latest
+            container:
+              image: registry.access.redhat.com/ubi10/ubi:latest
+
+            env:
+              REDHAT_KEY: ${{ secrets.RedHat-Key }}
+              REDHAT_ORG: ${{ secrets.RedHat-Org }}
+
+            steps:
+              - name: Verify subscription
+                shell: bash
+                run: |
+                  subscription-manager register \
+                    --activationkey="$REDHAT_KEY" \
+                    --org="$REDHAT_ORG"
+
+                  status=$?
+
+                  if [ "$status" -eq 0 ]; then
+                    echo "Red Hat subscription verification: SUCCESS"
+                  else
+                    echo "Red Hat subscription verification: FAILED"
+                  fi
+
+                  subscription-manager unregister || true
+                  subscription-manager clean || true
+
+                  exit "$status"
+        ```
+
+        ---
+
+  - type: input
+    id: rhel-verify-repository-file
+    attributes:
+      label: "验证仓库对应workflow文件链接"
+      description: "Repository verification workflow link"
+    validations:
+      required: true
+
+  - type: textarea
+    id: apply-reson
+    attributes:
+      label: "申请理由"
+      description: "Reason for joining"
+      placeholder: |
+        请告诉我们你为什么希望进群
+        Please tell us why you’d like to join the group.
+    validations:
+      required: true
