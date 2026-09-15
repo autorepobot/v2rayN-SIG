@@ -24,19 +24,12 @@ public partial class ClashConnectionsViewModel : MyReactiveObject
             await ClashConnectionClose(true);
         });
 
-        this.WhenActivated(disposables =>
-        {
-            var cancelDisposable = new CancellationDisposable();
-            cancelDisposable.DisposeWith(disposables);
-            var token = cancelDisposable.Token;
-
-            Task.Factory.StartNew(
-                async () => await GetClashConnectionsTask(token),
-                token,
-                TaskCreationOptions.LongRunning,
-                TaskScheduler.Default
-            );
-        });
+        _ = Task.Factory.StartNew(
+            async () => await GetClashConnectionsTask(),
+            CancellationToken.None,
+            TaskCreationOptions.LongRunning,
+            TaskScheduler.Default
+        );
     }
 
     public BulkObservableCollection<ClashConnectionModel> ConnectionItems { get; } = [];
@@ -124,40 +117,29 @@ public partial class ClashConnectionsViewModel : MyReactiveObject
         await GetClashConnections();
     }
 
-    public async Task GetClashConnectionsTask(CancellationToken token = default)
+    public async Task GetClashConnectionsTask()
     {
-        try
+        var numOfExecuted = 1;
+        while (true)
         {
-            var numOfExecuted = 1;
-            while (true)
+            await Task.Delay(1000 * 5);
+            numOfExecuted++;
+            if (!(AutoRefresh && AppManager.Instance.ShowInTaskbar &&
+                  AppManager.Instance.IsRunningCore(ECoreType.sing_box)))
             {
-                await Task.Delay(1000, token);
-                numOfExecuted++;
-                if (!(AutoRefresh && AppManager.Instance.ShowInTaskbar &&
-                      AppManager.Instance.IsRunningCore(ECoreType.sing_box)))
-                {
-                    continue;
-                }
-
-                if (_config.ClashUIItem.ConnectionsRefreshInterval <= 0)
-                {
-                    continue;
-                }
-
-                if (numOfExecuted % _config.ClashUIItem.ConnectionsRefreshInterval != 0)
-                {
-                    continue;
-                }
-                await GetClashConnections();
+                continue;
             }
-        }
-        catch (OperationCanceledException)
-        {
-            // Ignored
-        }
-        catch (Exception ex)
-        {
-            Logging.SaveLog("GetClashConnectionsTask", ex);
+
+            if (_config.ClashUIItem.ConnectionsRefreshInterval <= 0)
+            {
+                continue;
+            }
+
+            if (numOfExecuted % _config.ClashUIItem.ConnectionsRefreshInterval != 0)
+            {
+                continue;
+            }
+            await GetClashConnections();
         }
     }
 }
