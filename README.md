@@ -9,6 +9,13 @@
 </h1>
 
 > [!NOTE]
+> v2rayN-SIG may be unmaintained due to upstream issues. We recommend migrating to Carton-SIG \
+> 由于异常的上游关系，v2rayN-SIG 可能不再维护，我们建议迁移 Carton-SIG
+>
+> More / 详情： \
+> https://github.com/autorepobot/Carton-SIG
+
+> [!NOTE]
 > Due to Xray-core regulatory compliance issues, the v2rayN SIG only bundles Sing-box \
 > 由于 Xray-core 存在合规性问题，因此 v2rayN SIG 版仅内置 Sing-box
 >
