@@ -27,3 +27,4 @@ jobs:
       - fedora-43-ppc64le
       - fedora-44-riscv64
       - fedora-43-riscv64
+      - rocky-10-riscv64
