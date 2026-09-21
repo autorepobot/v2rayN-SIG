@@ -8,7 +8,7 @@
   </a>
 </h1>
 
-> [!NOTE]
+> [!WARNING]
 > v2rayN-SIG may be unmaintained due to upstream issues. We recommend migrating to Carton-SIG \
 > 由于异常的上游关系，v2rayN-SIG 可能不再维护，我们建议迁移 Carton-SIG
 >
