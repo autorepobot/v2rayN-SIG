@@ -1,0 +1,20 @@
+diff --git a/v2rayN/ServiceLib/Services/UpdateService.cs b/v2rayN/ServiceLib/Services/UpdateService.cs
+index c38bed7d269..fd1226356e9 100644
+--- a/v2rayN/ServiceLib/Services/UpdateService.cs
++++ b/v2rayN/ServiceLib/Services/UpdateService.cs
+@@ -324,6 +324,7 @@ private async Task<UpdateResult> ParseDownloadUrl(ECoreType type, UpdateResult r
+             {
+                 Architecture.Arm64 => coreInfo?.DownloadUrlWinArm64,
+                 Architecture.X64 => coreInfo?.DownloadUrlWin64,
++                Architecture.X86 => coreInfo?.DownloadUrlWin86,
+                 _ => null,
+             };
+ 
+@@ -347,6 +348,7 @@ private async Task<UpdateResult> ParseDownloadUrl(ECoreType type, UpdateResult r
+                 Architecture.Arm64 => coreInfo?.DownloadUrlLinuxArm64,
+                 Architecture.RiscV64 => coreInfo?.DownloadUrlLinuxRiscV64,
+                 Architecture.LoongArch64 => coreInfo?.DownloadUrlLinuxLoong64,
++                Architecture.Ppc64le => coreInfo?.DownloadUrlLinuxPpc64le,
+                 Architecture.X64 => coreInfo?.DownloadUrlLinux64,
+                 _ => null,
+             };
