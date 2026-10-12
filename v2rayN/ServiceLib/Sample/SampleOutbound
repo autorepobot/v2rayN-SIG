@@ -1,0 +1,14 @@
+﻿{
+	"tag": "proxy",
+	"protocol": "vmess",
+	"settings": {
+		"address": "v2ray.cool",
+		"port": 10086
+	},
+	"streamSettings": {
+		"network": "tcp"
+	},
+	"mux": {
+		"enabled": false
+	}
+}
