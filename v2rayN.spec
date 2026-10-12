@@ -4,7 +4,7 @@
 %global __requires_exclude ^liblttng-ust\\.so\\..*$
 
 Name:           v2rayN
-Version:        7.25.5
+Version:        7.25.6
 Release:        1%{?dist}
 Summary:        v2rayN (Avalonia) GUI client for Linux
 License:        GPL-3.0-only
@@ -21,10 +21,10 @@ Source4:        https://github.com/autorepobot/dotnet-sdk-prebuild/releases/down
 Source5:        https://github.com/autorepobot/dotnet-sdk-prebuild/releases/download/10.0.112/dotnet-sdk-10.0.112-linux-riscv64.tar.gz
 Source6:        https://github.com/autorepobot/dotnet-sdk-prebuild/releases/download/10.0.112/dotnet-sdk-10.0.112-linux-ppc64le.tar.gz
 
-Source7:        https://github.com/SagerNet/sing-box/releases/download/v1.14.2/sing-box-1.14.2-linux-amd64.tar.gz
-Source8:        https://github.com/SagerNet/sing-box/releases/download/v1.14.2/sing-box-1.14.2-linux-arm64.tar.gz
-Source9:        https://github.com/SagerNet/sing-box/releases/download/v1.14.2/sing-box-1.14.2-linux-riscv64.tar.gz
-Source10:       https://github.com/SagerNet/sing-box/releases/download/v1.14.2/sing-box-1.14.2-linux-ppc64le.tar.gz
+Source7:        https://github.com/SagerNet/sing-box/releases/download/v1.14.3/sing-box-1.14.3-linux-amd64.tar.gz
+Source8:        https://github.com/SagerNet/sing-box/releases/download/v1.14.3/sing-box-1.14.3-linux-arm64.tar.gz
+Source9:        https://github.com/SagerNet/sing-box/releases/download/v1.14.3/sing-box-1.14.3-linux-riscv64.tar.gz
+Source10:       https://github.com/SagerNet/sing-box/releases/download/v1.14.3/sing-box-1.14.3-linux-ppc64le.tar.gz
 
 Source11:       https://github.com/Loyalsoldier/V2ray-rules-dat/releases/latest/download/geosite.dat
 Source12:       https://github.com/Loyalsoldier/V2ray-rules-dat/releases/latest/download/geoip.dat
@@ -213,5 +213,5 @@ chmod 0644 %{buildroot}%{_datadir}/applications/v2rayn.desktop
 %{_datadir}/icons/hicolor/256x256/apps/v2rayn.png
 
 %changelog
-* Sat Sep 25 2026 Build Bot <repobot@local> - 7.25.2-1
+* Mon Oct 12 2026 Build Bot <repobot@local> - 7.25.6-1
 - Add riscv64 architecture support and dotnet-sdk-10.0.111-linux-riscv64 source
