@@ -213,5 +213,5 @@ chmod 0644 %{buildroot}%{_datadir}/applications/v2rayn.desktop
 %{_datadir}/icons/hicolor/256x256/apps/v2rayn.png
 
 %changelog
-* Mon Oct 21 2026 Build Bot <repobot@local> - 7.25.6-1
+* Wed Oct 21 2026 Build Bot <repobot@local> - 7.25.6-1
 - Add riscv64 architecture support and dotnet-sdk-10.0.111-linux-riscv64 source
