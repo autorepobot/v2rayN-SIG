@@ -356,6 +356,8 @@ public partial class CoreConfigSingboxService
             {
                 case EConfigType.WireGuard:
                     {
+                        endpoint.server = null;
+                        endpoint.server_port = null;
                         endpoint.address = Utils.String2List(protocolExtra.WgInterfaceAddress)?.Select(s => s.Trim()).ToList() ?? ["172.16.0.2/32"];
                         var peer = new Peer4Sbox
                         {
@@ -480,13 +482,6 @@ public partial class CoreConfigSingboxService
                 if (certs.Count > 0)
                 {
                     tls.certificate = certs;
-                    tls.insecure = false;
-                }
-                else if (!_node.CertPubKeySha.IsNullOrEmpty())
-                {
-                    tls.certificate_public_key_sha256 = _node.CertPubKeySha
-                        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                        .ToList();
                     tls.insecure = false;
                 }
             }
