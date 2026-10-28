@@ -21,10 +21,10 @@ Source4:        https://github.com/autorepobot/dotnet-sdk-prebuild/releases/down
 Source5:        https://github.com/autorepobot/dotnet-sdk-prebuild/releases/download/10.0.113/dotnet-sdk-10.0.113-linux-riscv64.tar.gz
 Source6:        https://github.com/autorepobot/dotnet-sdk-prebuild/releases/download/10.0.113/dotnet-sdk-10.0.113-linux-ppc64le.tar.gz
 
-Source7:        https://github.com/SagerNet/sing-box/releases/download/v1.14.3/sing-box-1.14.3-linux-amd64.tar.gz
-Source8:        https://github.com/SagerNet/sing-box/releases/download/v1.14.3/sing-box-1.14.3-linux-arm64.tar.gz
-Source9:        https://github.com/SagerNet/sing-box/releases/download/v1.14.3/sing-box-1.14.3-linux-riscv64.tar.gz
-Source10:       https://github.com/SagerNet/sing-box/releases/download/v1.14.3/sing-box-1.14.3-linux-ppc64le.tar.gz
+Source7:        https://github.com/SagerNet/sing-box/releases/download/v1.14.4/sing-box-1.14.4-linux-amd64.tar.gz
+Source8:        https://github.com/SagerNet/sing-box/releases/download/v1.14.4/sing-box-1.14.4-linux-arm64.tar.gz
+Source9:        https://github.com/SagerNet/sing-box/releases/download/v1.14.4/sing-box-1.14.4-linux-riscv64.tar.gz
+Source10:       https://github.com/SagerNet/sing-box/releases/download/v1.14.4/sing-box-1.14.4-linux-ppc64le.tar.gz
 
 Source11:       https://github.com/Loyalsoldier/V2ray-rules-dat/releases/latest/download/geosite.dat
 Source12:       https://github.com/Loyalsoldier/V2ray-rules-dat/releases/latest/download/geoip.dat
