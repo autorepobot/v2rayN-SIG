@@ -389,17 +389,19 @@ public partial class ProfilesView : ReactiveUserControl<ProfilesViewModel>
                             item2.Width = new DataGridLength(item.Width, DataGridLengthUnitType.Pixel);
                             item2.DisplayIndex = displayIndex++;
                         }
-                        if (item.Name.StartsWith("to", StringComparison.CurrentCultureIgnoreCase))
-                        {
-                            item2.IsVisible = _config.GuiItem.EnableStatistics;
-                        }
-                        if (item.Name.Equals("IpInfo", StringComparison.CurrentCultureIgnoreCase))
-                        {
-                            item2.IsVisible = _config.SpeedTestItem.IPAPIUrl.IsNotEmpty() && !_config.UiItem.HideColumnIpInfo;
-                        }
                     }
                 }
             }
+
+            foreach (var c in lstProfiles.Columns)
+            {
+                if (c.Tag is not string tag) continue;
+                if (tag.StartsWith("to", StringComparison.CurrentCultureIgnoreCase))
+                    c.IsVisible = _config.GuiItem.EnableStatistics;
+                else if (tag.Equals("IpInfo", StringComparison.CurrentCultureIgnoreCase))
+                    c.IsVisible = _config.SpeedTestItem.IPAPIUrl.IsNotEmpty() && !_config.UiItem.HideColumnIpInfo;
+            }
+
         }
         catch (Exception ex)
         {
