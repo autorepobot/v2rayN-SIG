@@ -93,7 +93,7 @@ public partial class App : Application
     private static void QueueMacOSAccessoryPolicyRestore(MainWindow mainWindow)
     {
         // AppKit may keep isMiniaturized set until the Dock restore animation finishes.
-        DispatcherTimer.RunOnce(() => RestoreMacOSAccessoryPolicy(mainWindow), TimeSpan.FromMilliseconds(300));
+        DispatcherTimer.RunOnce(() => RestoreMacOSAccessoryPolicy(mainWindow), TimeSpan.FromMilliseconds(330));
     }
 
     private static void RestoreMacOSAccessoryPolicy(MainWindow mainWindow)
