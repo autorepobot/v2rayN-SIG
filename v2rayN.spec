@@ -16,10 +16,10 @@ Source0:        https://github.com/autorepobot/v2rayN-SIG/archive/refs/tags/%{ve
 Source1:        https://github.com/2dust/GlobalHotKeys/archive/refs/heads/master.tar.gz
 Source2:        https://github.com/autorepobot/v2rayN-SIG-Nuget/releases/download/%{version}/nuget-cache.tar.xz
 
-Source3:        https://github.com/autorepobot/dotnet-sdk-prebuild/releases/download/10.0.114/dotnet-sdk-10.0.113-linux-x64.tar.gz
-Source4:        https://github.com/autorepobot/dotnet-sdk-prebuild/releases/download/10.0.114/dotnet-sdk-10.0.113-linux-arm64.tar.gz
-Source5:        https://github.com/autorepobot/dotnet-sdk-prebuild/releases/download/10.0.114/dotnet-sdk-10.0.113-linux-riscv64.tar.gz
-Source6:        https://github.com/autorepobot/dotnet-sdk-prebuild/releases/download/10.0.114/dotnet-sdk-10.0.113-linux-ppc64le.tar.gz
+Source3:        https://github.com/autorepobot/dotnet-sdk-prebuild/releases/download/10.0.114/dotnet-sdk-10.0.114-linux-x64.tar.gz
+Source4:        https://github.com/autorepobot/dotnet-sdk-prebuild/releases/download/10.0.114/dotnet-sdk-10.0.114-linux-arm64.tar.gz
+Source5:        https://github.com/autorepobot/dotnet-sdk-prebuild/releases/download/10.0.114/dotnet-sdk-10.0.114-linux-riscv64.tar.gz
+Source6:        https://github.com/autorepobot/dotnet-sdk-prebuild/releases/download/10.0.114/dotnet-sdk-10.0.114-linux-ppc64le.tar.gz
 
 Source7:        https://github.com/SagerNet/sing-box/releases/download/v1.14.4/sing-box-1.14.4-linux-amd64.tar.gz
 Source8:        https://github.com/SagerNet/sing-box/releases/download/v1.14.4/sing-box-1.14.4-linux-arm64.tar.gz
