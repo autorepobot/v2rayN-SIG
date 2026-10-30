@@ -1,0 +1,117 @@
+name: Update Mozilla and Chrome Root Certificates
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-root-certificates
+  cancel-in-progress: false
+
+jobs:
+  update-root-certificates:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-26.04
+    container: registry.access.redhat.com/ubi10/ubi
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Install shell dependencies
+        run: |
+          set -euo pipefail
+          dnf -y install ca-certificates curl git openssl
+          update-ca-trust
+
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          ref: master
+          persist-credentials: true
+
+      - name: Download and validate root certificates
+        run: |
+          set -euo pipefail
+
+          output_dir='v2rayN/ServiceLib/Sample'
+          temp_dir="$(mktemp -d)"
+          trap 'rm -rf "$temp_dir"' EXIT
+
+          # CCADB / Mozilla: CDLA-2.0-Permissive
+          curl --fail --location --silent --show-error --retry 3 \
+            'https://ccadb.my.salesforce-sites.com/mozilla/IncludedRootsPEMTxt?TrustBitsInclude=Websites' \
+            --output "$temp_dir/mozilla-source"
+
+          # Chromium Root Store: BSD-3-Clause
+          curl --fail --location --silent --show-error --retry 3 \
+            'https://chromium.googlesource.com/chromium/src/+/main/net/data/ssl/chrome_root_store/root_store.certs?format=TEXT' \
+            --output "$temp_dir/chrome-source-base64"
+          base64 --decode "$temp_dir/chrome-source-base64" > "$temp_dir/chrome-source"
+
+          extract_pem() {
+            awk '
+              /\r$/ { sub(/\r$/, "") }
+              $0 == "-----BEGIN CERTIFICATE-----" {
+                if (inside) { invalid = 1; exit 1 }
+                if (count++) printf "\n\n"
+                printf "%s", $0
+                inside = 1
+                next
+              }
+              $0 == "-----END CERTIFICATE-----" {
+                if (!inside) { invalid = 1; exit 1 }
+                printf "\n%s", $0
+                inside = 0
+                next
+              }
+              inside { printf "\n%s", $0 }
+              END { if (invalid || inside || !count) exit 1 }
+            ' "$1" > "$2"
+          }
+
+          validate_pem() {
+            local file="$1"
+            local count end_count
+            test -s "$file"
+            count="$(grep -c '^-----BEGIN CERTIFICATE-----$' "$file")"
+            end_count="$(grep -c '^-----END CERTIFICATE-----$' "$file")"
+            if (( count == 0 || count != end_count )); then
+              echo "Invalid certificate bundle: $file (begin=$count, end=$end_count)" >&2
+              return 1
+            fi
+            openssl crl2pkcs7 -nocrl -certfile "$file" -out /dev/null
+            echo "Validated $count certificates in $(basename "$file")"
+          }
+
+          extract_pem "$temp_dir/mozilla-source" "$temp_dir/mozilla_roots_pem"
+          extract_pem "$temp_dir/chrome-source" "$temp_dir/chrome_roots_pem"
+          validate_pem "$temp_dir/mozilla_roots_pem"
+          validate_pem "$temp_dir/chrome_roots_pem"
+
+          # Replace neither file unless both sources are valid.
+          install -m 0644 "$temp_dir/mozilla_roots_pem" "$output_dir/mozilla_roots_pem"
+          install -m 0644 "$temp_dir/chrome_roots_pem" "$output_dir/chrome_roots_pem"
+
+      - name: Commit updated root certificates
+        run: |
+          set -euo pipefail
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          git add -- \
+            v2rayN/ServiceLib/Sample/mozilla_roots_pem \
+            v2rayN/ServiceLib/Sample/chrome_roots_pem
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo 'Both root certificate bundles are already up to date.'
+            exit 0
+          fi
+
+          git diff --cached --stat
+          git commit -m 'chore(certs): update Mozilla and Chrome root certificates'
+          git push origin HEAD:master
