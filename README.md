@@ -6,14 +6,7 @@
   <a href="https://github.com/autorepobot/v2rayN-SIG/">
     <img width="36" height="36" alt="SIG" src="https://github.com/user-attachments/assets/04300161-ae57-4cab-babf-6bd2cbe2f074" />
   </a>
-</h1>
-
-> [!WARNING]
-> v2rayN-SIG may be unmaintained due to upstream issues. We recommend migrating to Carton-SIG \
-> 由于异常的上游关系，v2rayN-SIG 可能不再维护，我们建议迁移 Carton-SIG
->
-> More / 详情： \
-> https://github.com/autorepobot/Carton-SIG
+</h1> 
 
 > [!NOTE]
 > Due to Xray-core regulatory compliance issues, the v2rayN SIG only bundles Sing-box \
