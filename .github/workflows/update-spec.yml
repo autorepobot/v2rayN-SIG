@@ -21,6 +21,15 @@ on:
         required: false
         default: ''
 
+      update_dotnet:
+        description: '更新 .NET SDK'
+        type: boolean
+        default: false
+      dotnet_version:
+        description: '.NET SDK 版本号 (留空自动获取最新 Release)'
+        required: false
+        default: ''
+
 jobs:
   update-spec:
     runs-on: ubuntu-latest
@@ -60,8 +69,8 @@ jobs:
           else
             echo "跳过 v2rayN 更新"
 
-            # 若没勾选 v2rayN，但勾选了 sing-box，仅刷新 Changelog 顶部的 UTC 日期
-            if [ "${{ github.event.inputs.update_singbox }}" = "true" ]; then
+            # 若没勾选 v2rayN，但勾选了 sing-box 或 dotnet，仅刷新 Changelog 顶部的 UTC 日期
+            if [ "${{ github.event.inputs.update_singbox }}" = "true" ] || [ "${{ github.event.inputs.update_dotnet }}" = "true" ]; then
               sed -i -E "s/^\* [A-Za-z]{3} [A-Za-z]{3} [0-9]{1,2} [0-9]{4}/* ${UTC_DATE}/" "$SPEC_FILE"
             fi
           fi
@@ -78,6 +87,20 @@ jobs:
             sed -i -E "s#(sing-box/releases/download/)v[0-9.]+(/sing-box-)[0-9.]+#\1v${SINGBOX_VER}\2${SINGBOX_VER}#g" "$SPEC_FILE"
           else
             echo "跳过 sing-box 更新"
+          fi
+
+          # ================= 3. 处理 .NET SDK =================
+          if [ "${{ github.event.inputs.update_dotnet }}" = "true" ]; then
+            DOTNET_VER="${{ github.event.inputs.dotnet_version }}"
+            if [ -z "$DOTNET_VER" ]; then
+              DOTNET_VER=$(curl -s https://api.github.com/repos/autorepobot/dotnet-sdk-prebuild/releases/latest | jq -r '.tag_name // empty')
+            fi
+            DOTNET_VER="${DOTNET_VER#v}"
+            echo "正在更新 .NET SDK -> $DOTNET_VER"
+
+            sed -i -E "s#(dotnet-sdk-prebuild/releases/download/)[0-9.]+(/dotnet-sdk-)[0-9.]+#\1${DOTNET_VER}\2${DOTNET_VER}#g" "$SPEC_FILE"
+          else
+            echo "跳过 .NET SDK 更新"
           fi
 
       - name: Commit and Push Changes
