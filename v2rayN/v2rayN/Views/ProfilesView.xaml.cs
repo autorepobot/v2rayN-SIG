@@ -346,17 +346,18 @@ public partial class ProfilesView
                             item2.Width = item.Width;
                             item2.DisplayIndex = displayIndex++;
                         }
-                        if (item.Name.StartsWith("to", StringComparison.CurrentCultureIgnoreCase))
-                        {
-                            item2.Visibility = _config.GuiItem.EnableStatistics ? Visibility.Visible : Visibility.Hidden;
-                        }
-                        if (item.Name.Equals("IpInfo", StringComparison.CurrentCultureIgnoreCase))
-                        {
-                            item2.Visibility = _config.SpeedTestItem.IPAPIUrl.IsNotEmpty() && !_config.UiItem.HideColumnIpInfo ? Visibility.Visible : Visibility.Hidden;
-                        }
                     }
                 }
             }
+
+            foreach (var c in lstProfiles.Columns.Cast<MyDGTextColumn>())
+            {
+                if (c.ExName.StartsWith("to", StringComparison.CurrentCultureIgnoreCase))
+                    c.Visibility = _config.GuiItem.EnableStatistics ? Visibility.Visible : Visibility.Hidden;
+                else if (c.ExName.Equals("IpInfo", StringComparison.CurrentCultureIgnoreCase))
+                    c.Visibility = _config.SpeedTestItem.IPAPIUrl.IsNotEmpty() && !_config.UiItem.HideColumnIpInfo ? Visibility.Visible : Visibility.Hidden;
+            }
+
         }
         catch (Exception ex)
         {
