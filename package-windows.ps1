@@ -1,3 +1,7 @@
+# Run from the v2rayN repository root on Windows with .NET 10 SDK and WiX 7 prerequisites.
+# Build v2rayN WPF, Avalonia Desktop and AmazTool from source with dotnet publish.
+# Download sing-box architecture-matched official GitHub Release packages.
+# Never download or consume a pre-built v2rayN application ZIP.
 [CmdletBinding()]
 param(
     [ValidateSet('all', 'x64', 'x86', 'i386', 'arm64')]
@@ -345,7 +349,11 @@ $themeTemplate = @'
     </Page>
     <Page Name="Progress">
       <Label X="32" Y="142" Width="-32" Height="47" FontId="1">#(loc.ProgressHeader)</Label>
-      <Label Name="OverallProgressPackageText" X="32" Y="209" Width="-32" Height="38" FontId="2">#(loc.ProgressPackage)</Label>
+      <Label Name="OverallProgressPackageText"
+             X="32" Y="209"
+             Width="-32" Height="38"
+             FontId="2"
+             DisablePrefix="yes" />
       <Progressbar Name="OverallCalculatedProgressbar" X="32" Y="272" Width="-32" Height="17" />
       <Button Name="ProgressCancelButton" X="-30" Y="-28" Width="110" Height="36" TabStop="yes" FontId="0">#(loc.Cancel)</Button>
     </Page>
@@ -377,6 +385,7 @@ $themeTemplate = @'
   </Window>
 </Theme>
 '@
+# Bootstrapper theme is embedded in this script; no external theme file is required.
 [void][System.Xml.Linq.XDocument]::Parse($themeTemplate)
 $script:Stage = 'Validating four-language translations'
 
