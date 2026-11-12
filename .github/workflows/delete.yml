@@ -1,0 +1,35 @@
+name: Delete WebAPI
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  delete-webapi:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout master
+        uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Delete WebAPI
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git rm -r --ignore-unmatch -- v2rayN/v2rayN.WebAPI
+
+          if git diff --cached --quiet; then
+            echo "No WebAPI files to delete."
+            exit 0
+          fi
+
+          git commit -m "chore: remove WebAPI"
+          git push origin HEAD:master

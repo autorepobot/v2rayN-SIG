@@ -1,0 +1,13 @@
+diff --git a/v2rayN/ServiceLib/Manager/AppManager.cs b/v2rayN/ServiceLib/Manager/AppManager.cs
+index 72d2930550d..e304732544c 100644
+--- a/v2rayN/ServiceLib/Manager/AppManager.cs
++++ b/v2rayN/ServiceLib/Manager/AppManager.cs
+@@ -671,7 +671,7 @@ public ECoreType GetCoreType(ProfileItem? profileItem, EConfigType eConfigType)
+         }
+ 
+         var item = _config.CoreTypeItem?.FirstOrDefault(it => it.ConfigType == eConfigType);
+-        return item?.CoreType ?? ECoreType.Xray;
++        return item?.CoreType ?? ECoreType.sing_box;
+     }
+ 
+     #endregion Core Type
