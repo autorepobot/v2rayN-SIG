@@ -1,7 +1,3 @@
-# Run from the v2rayN repository root on Windows with .NET 10 SDK and WiX 7 prerequisites.
-# Build v2rayN WPF, Avalonia Desktop and AmazTool from source with dotnet publish.
-# Download sing-box architecture-matched official GitHub Release packages.
-# Never download or consume a pre-built v2rayN application ZIP.
 [CmdletBinding()]
 param(
     [ValidateSet('all', 'x64', 'x86', 'i386', 'arm64')]
@@ -86,7 +82,7 @@ function Download-File([string]$Url, [string]$Destination) {
 }
 
 function Get-OfficialRelease([string]$Repository, [string]$Ref) {
-    if ($Repository -ne 'SagerNet/sing-box') {
+    if ($Repository -notin @('SagerNet/sing-box')) {
         throw "Unsupported upstream core repository: $Repository"
     }
     $headers = @{ 'User-Agent' = 'v2rayN-source-packager'; 'Accept' = 'application/vnd.github+json'; 'X-GitHub-Api-Version' = '2022-11-28' }
@@ -381,7 +377,6 @@ $themeTemplate = @'
   </Window>
 </Theme>
 '@
-# Bootstrapper theme is embedded in this script; no external theme file is required.
 [void][System.Xml.Linq.XDocument]::Parse($themeTemplate)
 $script:Stage = 'Validating four-language translations'
 
@@ -496,7 +491,7 @@ $localePayloadXml = $localizedPayloads -join "`n"
 
 
 
-$script:Stage = 'Resolving official core releases'
+$script:Stage = 'Resolving official sing-box release'
 $singRelease = Get-OfficialRelease 'SagerNet/sing-box' $SingBoxRef
 $singVersion = ([string]$singRelease.tag_name) -replace '^v', ''
 Write-Host "Official core release: sing-box $($singRelease.tag_name)"
@@ -705,7 +700,9 @@ try {
             [void][System.Xml.Linq.XDocument]::Parse($bundleText)
             $bundleSource = Join-Path $work "$flavor-$arch.bundle.wxs"
             [System.IO.File]::WriteAllText($bundleSource, $bundleText, [System.Text.UTF8Encoding]::new($false))
-            $fileName = "v2rayN-$Version-windows-$arch-$flavor-setup.exe"
+            $archSuffix = @{ x64='64'; x86='86'; arm64='arm64' }[$arch]
+            $desktopSuffix = if ($flavor -eq 'desktop') { '-desktop' } else { '' }
+            $fileName = "v2rayN-windows-$archSuffix$desktopSuffix.exe"
             $setup = Join-Path $dist $fileName
             $script:Stage = "Building $flavor $arch native EXE installer"
             Run $wix @('build',$bundleSource,'-arch',$map.Wix,'-ext','WixToolset.Util.wixext','-ext','WixToolset.BootstrapperApplications.wixext','-o',$setup)
