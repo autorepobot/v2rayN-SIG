@@ -145,7 +145,7 @@ public partial class CoreConfigSingboxService
 
     private void ApplyOutboundBindInterface()
     {
-        var bindInterface = NetworkUtils.GetRealBindInterfaceName(_config.CoreBasicItem.BindInterface);
+        var bindInterface = _config.CoreBasicItem.BindInterface?.TrimEx();
         if (bindInterface.IsNullOrEmpty())
         {
             return;

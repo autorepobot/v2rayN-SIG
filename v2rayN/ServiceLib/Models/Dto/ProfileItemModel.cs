@@ -1,5 +1,6 @@
 namespace ServiceLib.Models.Dto;
 
+[Serializable]
 public partial class ProfileItemModel : ReactiveObject
 {
     public bool IsActive { get; set; }

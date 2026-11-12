@@ -135,13 +135,16 @@ public class UdpTestService
                     roundTripTime = currentRoundTripTime;
                 }
             }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
             {
                 throw;
             }
-            catch (OperationCanceledException)
+            catch
             {
-                // Timeout, continue to next attempt
+                if (attempt == 1 && roundTripTime == TimeSpan.MaxValue)
+                {
+                    throw;
+                }
             }
         }
 

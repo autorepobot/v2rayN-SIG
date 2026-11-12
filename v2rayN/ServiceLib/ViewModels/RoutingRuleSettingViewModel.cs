@@ -191,7 +191,13 @@ public partial class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
         }
         if (lst.Count > 0)
         {
-            await SetClipboardDataInteraction.HandleSafe(JsonUtils.SerializeCamelCase(lst));
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            };
+            await SetClipboardDataInteraction.HandleSafe(JsonUtils.Serialize(lst, options));
         }
     }
 
@@ -294,8 +300,8 @@ public partial class RoutingRuleSettingViewModel : MyReactiveObject, ICloseable
             return;
         }
 
-        using var downloadHandle = await DownloadService.CreateDownloadServiceWithCheck();
-        var result = await downloadHandle.TryDownloadString(url);
+        var downloadHandle = new DownloadService();
+        var result = await downloadHandle.TryDownloadString(url, true, "");
         var ret = await AddBatchRoutingRulesAsync(SelectedRouting, result);
         if (ret == 0)
         {

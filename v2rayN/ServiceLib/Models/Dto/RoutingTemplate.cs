@@ -1,5 +1,6 @@
 namespace ServiceLib.Models.Dto;
 
+[Serializable]
 public class RoutingTemplate
 {
     public string Version { get; set; }
