@@ -188,13 +188,10 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
                     break;
 
                 case ESpeedActionType.Speedtest:
-                    // A skipped or failed test must not leave the last speed behind for sorting.
-                    ProfileExManager.Instance.SetTestSpeed(it.IndexId, 0);
                     await UpdateFunc(it.IndexId, "", message);
                     break;
 
                 case ESpeedActionType.Mixedtest:
-                    ProfileExManager.Instance.SetTestSpeed(it.IndexId, 0);
                     await UpdateFunc(it.IndexId, message, message);
                     break;
             }
@@ -435,6 +432,8 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
         ConcurrentDictionary<string, byte> completedIds, int concurrencyCount, bool blSpeedTest,
         CancellationToken ct = default)
     {
+        var downloadHandle = new DownloadService();
+
         var parallelOptions = new ParallelOptions
         {
             MaxDegreeOfParallelism = concurrencyCount,
@@ -462,7 +461,7 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
                 {
                     if (delay > 0)
                     {
-                        await DoSpeedTest(it, completedIds, innerCt);
+                        await DoSpeedTest(downloadHandle, it, completedIds, innerCt);
                     }
                     else
                     {
@@ -491,64 +490,40 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
     private async Task<int> DoRealPing(ServerTestItem it,
         ConcurrentDictionary<string, byte> completedIds, CancellationToken ct = default)
     {
-        var responseTime = -1;
-        try
-        {
-            using var handler = HttpClientHelper.CreateProxySocketsHttpHandler(it.Port, new());
-            handler.ConnectTimeout = Global.LocalFetch;
-            using var client = new HttpClient(handler, false);
-            responseTime = await ConnectionHandler.GetRealPingTime(client, ct);
+        var webProxy = new WebProxy($"socks5://{Global.Loopback}:{it.Port}");
+        var responseTime = await ConnectionHandler.GetRealPingTime(webProxy, ct);
 
-            ProfileExManager.Instance.SetTestDelay(it.IndexId, responseTime);
-            await UpdateFunc(it.IndexId, responseTime.ToString());
+        ProfileExManager.Instance.SetTestDelay(it.IndexId, responseTime);
+        await UpdateFunc(it.IndexId, responseTime.ToString());
 
-            if (!_config.UiItem.HideColumnIpInfo && responseTime > 0)
-            {
-                using var downloadHandle = new DownloadService
-                {
-                    Handler = handler,
-                    DisposeHandler = false,
-                };
-                var ipInfo = await ConnectionHandler.GetIPInfo(downloadHandle, ct);
-                var ipStr = ipInfo?.ToString() ?? Global.None;
-                ProfileExManager.Instance.SetTestIpInfo(it.IndexId, ipStr);
-                await UpdateIpInfoFunc(it.IndexId, ipStr);
-            }
-            else
-            {
-                await UpdateIpInfoFunc(it.IndexId, ResUI.SpeedtestingSkip);
-            }
+        if (!_config.UiItem.HideColumnIpInfo && responseTime > 0)
+        {
+            var ipInfo = await ConnectionHandler.GetIPInfo(webProxy, ct);
+            var ipStr = ipInfo?.ToString() ?? Global.None;
+            ProfileExManager.Instance.SetTestIpInfo(it.IndexId, ipStr);
+            await UpdateIpInfoFunc(it.IndexId, ipStr);
+        }
+        else
+        {
+            await UpdateIpInfoFunc(it.IndexId, ResUI.SpeedtestingSkip);
+        }
 
-            completedIds.TryAdd(it.IndexId, 0);
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch
-        {
-            // Ignore
-        }
+        completedIds.TryAdd(it.IndexId, 0);
         return responseTime;
     }
 
-    private async Task DoSpeedTest(ServerTestItem it,
+    private async Task DoSpeedTest(DownloadService downloadHandle, ServerTestItem it,
         ConcurrentDictionary<string, byte> completedIds, CancellationToken ct = default)
     {
         await UpdateFunc(it.IndexId, "", ResUI.Speedtesting);
 
-        var handler = HttpClientHelper.CreateProxySocketsHttpHandler(it.Port, new());
+        var webProxy = new WebProxy($"socks5://{Global.Loopback}:{it.Port}");
         var url = _config.SpeedTestItem.SpeedTestUrl;
         var timeout = _config.SpeedTestItem.SpeedTestTimeout;
         using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(timeout));
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
         var linkedCt = linkedCts.Token;
-        using var downloadHandle = new DownloadService
-        {
-            Handler = handler,
-            DisposeHandler = true,
-        };
-        await downloadHandle.DownloadDataAsync(url, async (success, msg) =>
+        await downloadHandle.DownloadDataAsync(url, webProxy, async (success, msg) =>
         {
             decimal.TryParse(msg, out var dec);
             if (dec > 0)
@@ -563,20 +538,8 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
     private async Task<int> DoUdpTest(ServerTestItem it,
         ConcurrentDictionary<string, byte> completedIds, CancellationToken ct = default)
     {
-        var responseTime = -1;
-        try
-        {
-            var udpService = UdpTestService.CreateFromTarget(_config?.SpeedTestItem.UdpTestTarget, out var udpTestUrl);
-            responseTime = (int)(await udpService.SendUdpRequestAsync(udpTestUrl, it.Port, ct)).TotalMilliseconds;
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch
-        {
-            // Ignore
-        }
+        var udpService = UdpTestService.CreateFromTarget(_config?.SpeedTestItem.UdpTestTarget, out var udpTestUrl);
+        var responseTime = (int)(await udpService.SendUdpRequestAsync(udpTestUrl, it.Port, ct)).TotalMilliseconds;
 
         ProfileExManager.Instance.SetTestDelay(it.IndexId, responseTime);
         await UpdateFunc(it.IndexId, responseTime.ToString());

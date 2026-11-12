@@ -1,5 +1,6 @@
 namespace ServiceLib.Models.Entities;
 
+[Serializable]
 public class RulesItem
 {
     public string Id { get; set; }

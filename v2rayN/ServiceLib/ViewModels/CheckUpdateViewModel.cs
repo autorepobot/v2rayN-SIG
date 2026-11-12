@@ -163,9 +163,8 @@ public partial class CheckUpdateViewModel : MyReactiveObject
                 continue;
             }
 
-            using var downloadService = await DownloadService.CreateDownloadServiceWithCheck(EnableUpdateViaProxy);
-            var updateService = new UpdateService(downloadService, _config, async (success, msg) => await Task.CompletedTask);
-            var result = await updateService.CheckHasUpdateOnly(item.CoreType.Value, item.IsCheckPreRelease);
+            var updateService = new UpdateService(_config, async (success, msg) => await Task.CompletedTask);
+            var result = await updateService.CheckHasUpdateOnly(item.CoreType.Value, item.IsCheckPreRelease, EnableUpdateViaProxy);
             if (result.Success && result.Version != null)
             {
                 await UpdateView(item.CoreType, string.Format(ResUI.MsgCheckUpdateHasNewVersion, item.CoreType, result.Version));
@@ -246,8 +245,7 @@ public partial class CheckUpdateViewModel : MyReactiveObject
                 UpdatedPlusPlus(null, "");
             }
         }
-        using var downloadService = await DownloadService.CreateDownloadServiceWithCheck(EnableUpdateViaProxy);
-        await new UpdateService(downloadService, _config, _updateUI).UpdateGeoFileAll()
+        await new UpdateService(_config, _updateUI).UpdateGeoFileAll(EnableUpdateViaProxy)
             .ContinueWith(t => UpdatedPlusPlus(null, ""));
     }
 
@@ -262,8 +260,7 @@ public partial class CheckUpdateViewModel : MyReactiveObject
                 UpdatedPlusPlus(_v2rayN, msg);
             }
         }
-        using var downloadService = await DownloadService.CreateDownloadServiceWithCheck(EnableUpdateViaProxy);
-        await new UpdateService(downloadService, _config, _updateUI).CheckUpdateGuiN(preRelease)
+        await new UpdateService(_config, _updateUI).CheckUpdateGuiN(preRelease, EnableUpdateViaProxy)
             .ContinueWith(t => UpdatedPlusPlus(_v2rayN, ""));
     }
 
@@ -281,8 +278,7 @@ public partial class CheckUpdateViewModel : MyReactiveObject
 
         if (model.CoreType.HasValue)
         {
-            using var downloadService = await DownloadService.CreateDownloadServiceWithCheck(EnableUpdateViaProxy);
-            await new UpdateService(downloadService, _config, _updateUI).CheckUpdateCore(model.CoreType.Value, preRelease)
+            await new UpdateService(_config, _updateUI).CheckUpdateCore(model.CoreType.Value, preRelease, EnableUpdateViaProxy)
                 .ContinueWith(t => UpdatedPlusPlus(model.CoreType, ""));
         }
     }

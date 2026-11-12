@@ -578,11 +578,7 @@ public partial class MainWindowViewModel : MyReactiveObject
 
     public async Task UpdateSubscriptionProcess(string subId, bool blProxy)
     {
-        await Task.Run(async () =>
-        {
-            var handler = new SubscriptionHandler(_config, blProxy, UpdateTaskHandler);
-            await handler.UpdateProcess(subId);
-        });
+        await Task.Run(async () => await SubscriptionHandler.UpdateProcess(_config, subId, blProxy, UpdateTaskHandler));
     }
 
     #endregion Subscription
@@ -796,8 +792,7 @@ public partial class MainWindowViewModel : MyReactiveObject
         });
 
         await ConfigHandler.SaveConfig(_config);
-        using var downloadService = await DownloadService.CreateDownloadServiceWithCheck();
-        await new UpdateService(downloadService, _config, UpdateTaskHandler).UpdateGeoFileAll();
+        await new UpdateService(_config, UpdateTaskHandler).UpdateGeoFileAll();
         await Reload();
     }
 

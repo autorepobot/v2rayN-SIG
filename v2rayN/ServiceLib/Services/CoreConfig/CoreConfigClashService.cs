@@ -1,3 +1,4 @@
+using YamlDotNet.Core;
 using YamlDotNet.RepresentationModel;
 
 namespace ServiceLib.Services.CoreConfig;
@@ -60,10 +61,10 @@ public class CoreConfigClashService(Config config, bool isTunEnabled)
             //YAML anchors
             if (txtFile.Contains("<<:") && txtFile.Contains('*') && txtFile.Contains('&'))
             {
-                txtFile = YamlUtils.PreprocessYaml(txtFile) ?? "";
+                txtFile = YamlUtils.PreprocessYaml(txtFile);
             }
 
-            var fileContent = YamlUtils.FromYaml(txtFile);
+            var fileContent = YamlUtils.FromYaml<Dictionary<string, object>>(txtFile);
             if (fileContent == null)
             {
                 ret.Msg = ResUI.FailedConversionConfiguration;
@@ -71,38 +72,29 @@ public class CoreConfigClashService(Config config, bool isTunEnabled)
             }
 
             //mixed-port
-            //fileContent["mixed-port"] = AppManager.Instance.GetLocalPort(EInboundProtocol.socks);
-            fileContent.Children[new YamlScalarNode("mixed-port")] = new YamlScalarNode(AppManager.Instance.GetLocalPort(EInboundProtocol.socks).ToString());
+            fileContent["mixed-port"] = AppManager.Instance.GetLocalPort(EInboundProtocol.socks);
             //log-level
-            //fileContent["log-level"] = GetLogLevel(config.CoreBasicItem.Loglevel);
-            fileContent.Children[new YamlScalarNode("log-level")] = new YamlScalarNode(GetLogLevel(config.CoreBasicItem.Loglevel));
+            fileContent["log-level"] = GetLogLevel(config.CoreBasicItem.Loglevel);
 
             //external-controller
-            //fileContent["external-controller"] = $"{Global.Loopback}:{AppManager.Instance.StatePort2}";
-            fileContent.Children[new YamlScalarNode("external-controller")] = new YamlScalarNode($"{Global.Loopback}:{AppManager.Instance.StatePort2}");
-            //fileContent.Remove("secret");
-            fileContent.Children.Remove(new YamlScalarNode("secret"));
+            fileContent["external-controller"] = $"{Global.Loopback}:{AppManager.Instance.StatePort2}";
+            fileContent.Remove("secret");
             //allow-lan
             if (config.Inbound.First().AllowLANConn)
             {
-                //fileContent["allow-lan"] = "true";
-                fileContent.Children[new YamlScalarNode("allow-lan")] = new YamlScalarNode("true");
-                //fileContent["bind-address"] = "*";
-                fileContent.Children[new YamlScalarNode("bind-address")] = new YamlScalarNode("*");
+                fileContent["allow-lan"] = "true";
+                fileContent["bind-address"] = "*";
             }
             else
             {
-                //fileContent["allow-lan"] = "false";
-                fileContent.Children[new YamlScalarNode("allow-lan")] = new YamlScalarNode("false");
+                fileContent["allow-lan"] = "false";
             }
 
             //ipv6
-            //fileContent["ipv6"] = config.ClashUIItem.EnableIPv6;
-            fileContent.Children[new YamlScalarNode("ipv6")] = new YamlScalarNode(config.ClashUIItem.EnableIPv6.ToString().ToLowerInvariant());
+            fileContent["ipv6"] = config.ClashUIItem.EnableIPv6;
 
             //mode
-            //fileContent.TryAdd("mode", nameof(ERuleMode.Rule));
-            fileContent.Children.TryAdd(new YamlScalarNode("mode"), new YamlScalarNode(nameof(ERuleMode.Rule)));
+            fileContent.TryAdd("mode", nameof(ERuleMode.Rule));
 
             //enable tun mode
             if (isTunEnabled)
@@ -110,11 +102,10 @@ public class CoreConfigClashService(Config config, bool isTunEnabled)
                 var tun = EmbedUtils.GetEmbedText(Global.ClashTunYaml);
                 if (tun.IsNotEmpty())
                 {
-                    var tunContent = YamlUtils.FromYaml(tun);
+                    var tunContent = YamlUtils.FromYaml<Dictionary<string, object>>(tun);
                     if (tunContent != null)
                     {
-                        //fileContent["tun"] = tunContent["tun"];
-                        fileContent.Children[new YamlScalarNode("tun")] = tunContent.Children[new YamlScalarNode("tun")];
+                        fileContent["tun"] = tunContent["tun"];
                     }
                 }
             }
@@ -129,27 +120,27 @@ public class CoreConfigClashService(Config config, bool isTunEnabled)
                 Logging.SaveLog($"{_tag}-Mixin", ex);
             }
 
-            //// Mihomo parses plain values such as 815458e4 as floats, so quote REALITY short IDs.
-            //var originalRealityShortIds = new List<(Dictionary<object, object> RealityOptions, string ShortId)>();
-            //if (fileContent.GetValueOrDefault("proxies") is List<object> proxies)
-            //{
-            //    foreach (var proxy in proxies.OfType<Dictionary<object, object>>())
-            //    {
-            //        if (proxy.GetValueOrDefault("reality-opts") is Dictionary<object, object> realityOptions
-            //            && realityOptions.GetValueOrDefault("short-id") is string shortId
-            //            && !shortId.StartsWith(tagYamlStr2, StringComparison.Ordinal))
-            //        {
-            //            originalRealityShortIds.Add((realityOptions, shortId));
-            //            realityOptions["short-id"] = new YamlScalarNode(shortId) { Style = ScalarStyle.DoubleQuoted };
-            //        }
-            //    }
-            //}
+            // Mihomo parses plain values such as 815458e4 as floats, so quote REALITY short IDs.
+            var originalRealityShortIds = new List<(Dictionary<object, object> RealityOptions, string ShortId)>();
+            if (fileContent.GetValueOrDefault("proxies") is List<object> proxies)
+            {
+                foreach (var proxy in proxies.OfType<Dictionary<object, object>>())
+                {
+                    if (proxy.GetValueOrDefault("reality-opts") is Dictionary<object, object> realityOptions
+                        && realityOptions.GetValueOrDefault("short-id") is string shortId
+                        && !shortId.StartsWith(tagYamlStr2, StringComparison.Ordinal))
+                    {
+                        originalRealityShortIds.Add((realityOptions, shortId));
+                        realityOptions["short-id"] = new YamlScalarNode(shortId) { Style = ScalarStyle.DoubleQuoted };
+                    }
+                }
+            }
 
             var txtFileNew = YamlUtils.ToYaml(fileContent).Replace(tagYamlStr2, tagYamlStr3);
-            //foreach (var (realityOptions, shortId) in originalRealityShortIds)
-            //{
-            //    realityOptions["short-id"] = shortId;
-            //}
+            foreach (var (realityOptions, shortId) in originalRealityShortIds)
+            {
+                realityOptions["short-id"] = shortId;
+            }
             await File.WriteAllTextAsync(fileName, txtFileNew);
             //check again
             if (!File.Exists(fileName))
@@ -170,7 +161,7 @@ public class CoreConfigClashService(Config config, bool isTunEnabled)
         }
     }
 
-    private async Task MixinContent(YamlMappingNode fileContent, ProfileItem node)
+    private async Task MixinContent(Dictionary<string, object> fileContent, ProfileItem node)
     {
         if (!config.ClashUIItem.EnableMixinContent)
         {
@@ -186,116 +177,80 @@ public class CoreConfigClashService(Config config, bool isTunEnabled)
 
         var txtFile = await File.ReadAllTextAsync(Utils.GetConfigPath(Global.ClashMixinConfigFileName));
 
-        var mixinContent = YamlUtils.FromYaml(txtFile);
+        var mixinContent = YamlUtils.FromYaml<Dictionary<string, object>>(txtFile);
         if (mixinContent == null)
         {
             return;
         }
-        foreach (var (keyNode, valueNode) in mixinContent.Children)
+        foreach (var item in mixinContent)
         {
-            if (keyNode is not YamlScalarNode scalarKey)
-            {
-                continue;
-            }
-            var key = scalarKey.Value ?? "";
-            if (!isTunEnabled && key == "tun")
+            if (!isTunEnabled && item.Key == "tun")
             {
                 continue;
             }
 
-            if (key.StartsWith("prepend-")
-                || key.StartsWith("append-")
-                || key.StartsWith("removed-"))
+            if (item.Key.StartsWith("prepend-")
+                || item.Key.StartsWith("append-")
+                || item.Key.StartsWith("removed-"))
             {
-                ModifyContentMerge(fileContent, key, valueNode);
+                ModifyContentMerge(fileContent, item.Key, item.Value);
             }
             else
             {
-                fileContent.Children[keyNode] = valueNode;
+                fileContent[item.Key] = item.Value;
             }
         }
         return;
     }
 
-    private void ModifyContentMerge(YamlMappingNode fileContent, YamlNode keyNode, YamlNode valueNode)
+    private void ModifyContentMerge(Dictionary<string, object> fileContent, string key, object value)
     {
-        if (keyNode is not YamlScalarNode { Value: string key })
-        {
-            return;
-        }
-
         var blPrepend = false;
         var blRemoved = false;
-        string realKey;
-
         if (key.StartsWith("prepend-"))
         {
             blPrepend = true;
-            realKey = key["prepend-".Length..];
+            key = key.Replace("prepend-", "");
         }
         else if (key.StartsWith("append-"))
         {
-            realKey = key["append-".Length..];
+            blPrepend = false;
+            key = key.Replace("append-", "");
         }
         else if (key.StartsWith("removed-"))
         {
             blRemoved = true;
-            realKey = key["removed-".Length..];
+            key = key.Replace("removed-", "");
         }
         else
         {
             return;
         }
 
-        var targetKeyNode = new YamlScalarNode(realKey);
-
-        if (!blRemoved && fileContent.Children.TryAdd(targetKeyNode, valueNode))
+        if (!blRemoved && fileContent.TryAdd(key, value))
         {
             return;
         }
-
-        if (!fileContent.Children.TryGetValue(targetKeyNode, out var existingNode) ||
-            existingNode is not YamlSequenceNode lstOri ||
-            valueNode is not YamlSequenceNode lstValue)
-        {
-            return;
-        }
+        var lstOri = (List<object>)fileContent[key];
+        var lstValue = (List<object>)value;
 
         if (blRemoved)
         {
-            var removePrefixes = lstValue.Children
-                .OfType<YamlScalarNode>()
-                .Select(s => s.Value)
-                .Where(v => !string.IsNullOrEmpty(v))
-                .ToList();
-
-            for (var i = lstOri.Children.Count - 1; i >= 0; i--)
+            foreach (var item in lstValue)
             {
-                if (lstOri.Children[i] is YamlScalarNode { Value: not null } itemScalar)
-                {
-                    if (removePrefixes.Any(prefix => itemScalar.Value.StartsWith(prefix!)))
-                    {
-                        lstOri.Children.RemoveAt(i);
-                    }
-                }
+                lstOri.RemoveAll(t => t.ToString().StartsWith(item.ToString()));
             }
             return;
         }
 
         if (blPrepend)
         {
-            // Insert in reverse order to maintain original sequence at index 0
-            for (var i = lstValue.Children.Count - 1; i >= 0; i--)
-            {
-                lstOri.Children.Insert(0, lstValue.Children[i]);
-            }
+            lstValue.Reverse();
+            lstValue.ForEach(item => lstOri.Insert(0, item));
         }
         else
         {
-            foreach (var item in lstValue.Children)
-            {
-                lstOri.Children.Add(item);
-            }
+            lstValue.ForEach(lstOri.Add);
         }
     }
 

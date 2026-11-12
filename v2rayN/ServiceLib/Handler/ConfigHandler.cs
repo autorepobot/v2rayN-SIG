@@ -1,3 +1,5 @@
+using System.Data;
+
 namespace ServiceLib.Handler;
 
 public static class ConfigHandler
@@ -102,21 +104,6 @@ public static class ConfigHandler
         config.UiItem ??= new();
         config.UiItem.MainColumnItem ??= [];
         config.UiItem.WindowSizeItem ??= [];
-        if (config.UiItem.FrozenColumnCount == null)
-        {
-            var lvColumnItem = config.UiItem.MainColumnItem.OrderBy(t => t.Index).ToList();
-            if (lvColumnItem.Count == 0
-                || (lvColumnItem.Count >= 2
-                    && lvColumnItem[0].Name.Equals("ConfigType")
-                    && lvColumnItem[1].Name.Equals("Remarks")))
-            {
-                config.UiItem.FrozenColumnCount = 2;
-            }
-            else
-            {
-                config.UiItem.FrozenColumnCount = 0;
-            }
-        }
 
         if (config.UiItem.CurrentLanguage.IsNullOrEmpty())
         {
@@ -130,8 +117,6 @@ public static class ConfigHandler
         config.SimpleDNSItem ??= InitBuiltinSimpleDNS();
         config.SimpleDNSItem.BlockAAAAQuery ??= false;
         config.SimpleDNSItem.FakeIPRange ??= Global.FakeIPRanges.FirstOrDefault();
-        config.SimpleDNSItem.FakeIPv6 ??= false;
-        config.SimpleDNSItem.FakeIPv6Range ??= Global.FakeIPv6Ranges.First();
         config.SimpleDNSItem.GlobalFakeIp ??= true;
         config.SimpleDNSItem.BootstrapDNS ??= Global.DomainPureIPDNSAddress.FirstOrDefault();
         config.SimpleDNSItem.ServeStale ??= false;
@@ -553,67 +538,6 @@ public static class ConfigHandler
 
         ProfileExManager.Instance.SetSort(lstProfile[index], sort);
         return await Task.FromResult(0);
-    }
-
-    public static Task<int> MoveServersTo(
-        Config config,
-        IReadOnlyList<string> orderedProfileIds,
-        IReadOnlyList<int> sourceIndices,
-        int insertIndex)
-    {
-        ArgumentNullException.ThrowIfNull(orderedProfileIds);
-        ArgumentNullException.ThrowIfNull(sourceIndices);
-
-        if (orderedProfileIds.Count == 0 ||
-            sourceIndices.Count == 0 ||
-            insertIndex < 0 ||
-            insertIndex > orderedProfileIds.Count)
-        {
-            return Task.FromResult(-1);
-        }
-
-        int[] movingIndices = sourceIndices
-            .Distinct()
-            .OrderBy(index => index)
-            .ToArray();
-
-        if (movingIndices.Length != sourceIndices.Count ||
-            movingIndices.Any(index =>
-                index < 0 || index >= orderedProfileIds.Count))
-        {
-            return Task.FromResult(-1);
-        }
-
-        var movingIndexSet = movingIndices.ToHashSet();
-
-        var movingIds = movingIndices
-            .Select(index => orderedProfileIds[index])
-            .ToList();
-
-        var remainingIds = orderedProfileIds
-            .Where((_, index) => !movingIndexSet.Contains(index))
-            .ToList();
-
-        if (insertIndex > remainingIds.Count)
-        {
-            return Task.FromResult(-1);
-        }
-
-        remainingIds.InsertRange(insertIndex, movingIds);
-
-        if (remainingIds.Count != orderedProfileIds.Count)
-        {
-            return Task.FromResult(-1);
-        }
-
-        for (var index = 0; index < remainingIds.Count; index++)
-        {
-            ProfileExManager.Instance.SetSort(
-                remainingIds[index],
-                (index + 1) * 10);
-        }
-
-        return Task.FromResult(0);
     }
 
     /// <summary>
@@ -1076,6 +1000,10 @@ public static class ConfigHandler
         profileItem.Address = profileItem.Address.TrimEx();
         profileItem.Username = profileItem.Username.TrimEx();
         profileItem.Password = profileItem.Password.TrimEx();
+        profileItem.Fingerprint = string.Empty;
+        profileItem.Alpn = string.Empty;
+        profileItem.Network = string.Empty;
+        profileItem.AllowInsecure = string.Empty;
         if (profileItem.StreamSecurity.IsNullOrEmpty())
         {
             profileItem.StreamSecurity = Global.StreamSecurity;
@@ -1728,15 +1656,10 @@ public static class ConfigHandler
         }
 
         var subFilter = string.Empty;
-        var preResolver = string.Empty;
         if (isSub && subid.IsNotEmpty())
         {
             subFilter = (await AppManager.Instance.GetSubItem(subid))?.Filter ?? "";
-            preResolver = (await AppManager.Instance.GetSubItem(subid))?.PreResolver ?? "";
         }
-
-        var dnsClient = preResolver.IsNullOrEmpty() ? null : EndpointResolveManager.BuildDnsClient(preResolver);
-        var dnsCache = new Dictionary<string, string>();
 
         var countServers = 0;
         List<ProfileItem> lstAdd = [];
@@ -1772,21 +1695,6 @@ public static class ConfigHandler
             }
             profileItem.Subid = subid;
             profileItem.IsSub = isSub;
-
-            if (dnsClient is not null && profileItem.Address.IsNotEmpty() && !Utils.IsIpAddress(profileItem.Address))
-            {
-                if (!dnsCache.TryGetValue(profileItem.Address, out var resolvedAddress))
-                {
-                    var ipList = await dnsClient.ResolveIpv46Async(profileItem.Address);
-                    resolvedAddress = ipList.FirstOrDefault()?.ToString() ?? profileItem.Address;
-                    dnsCache[profileItem.Address] = resolvedAddress;
-                }
-                if (!resolvedAddress.IsNullOrEmpty())
-                {
-                    profileItem.Address = resolvedAddress;
-                }
-                // TODO: Override the host and sni if empty
-            }
 
             var addStatus = profileItem.ConfigType switch
             {
@@ -2165,6 +2073,7 @@ public static class ConfigHandler
         {
             lstOriSub = await AppManager.Instance.ProfileItems(subid);
             activeProfile = lstOriSub?.FirstOrDefault(t => t.IndexId == config.IndexId);
+            await RemoveServersViaSubid(config, subid, true);
         }
 
         var counter = 0;
@@ -2222,11 +2131,6 @@ public static class ConfigHandler
         if (counter < 1)
         {
             counter = await AddBatchServers4Custom(config, strData, subid, isSub);
-        }
-
-        if (counter > 0 && lstOriSub is { Count: > 0 })
-        {
-            await RemoveServers(config, lstOriSub.Where(item => item.IsSub).ToList());
         }
 
         //Select active node
@@ -2332,7 +2236,6 @@ public static class ConfigHandler
             item.PreSocksPort = subItem.PreSocksPort;
             item.Memo = subItem.Memo;
             item.CustomCoreType = subItem.CustomCoreType;
-            item.PreResolver = subItem.PreResolver;
         }
 
         if (item.Id.IsNullOrEmpty())
@@ -2659,8 +2562,8 @@ public static class ConfigHandler
     /// <returns>0 if successful</returns>
     public static async Task<int> InitExternalRouting(Config config, bool blImportAdvancedRules = false)
     {
-        using var downloadHandle = await DownloadService.CreateDownloadServiceWithCheck();
-        var templateContent = await downloadHandle.TryDownloadString(config.ConstItem.RouteRulesTemplateSourceUrl);
+        var downloadHandle = new DownloadService();
+        var templateContent = await downloadHandle.TryDownloadString(config.ConstItem.RouteRulesTemplateSourceUrl, true, "");
         if (templateContent.IsNullOrEmpty())
         {
             return await InitBuiltinRouting(config, blImportAdvancedRules); // fallback
@@ -2689,7 +2592,7 @@ public static class ConfigHandler
 
             var ruleSetsString = !item.RuleSet.IsNullOrEmpty()
                 ? item.RuleSet
-                : await downloadHandle.TryDownloadString(item.Url);
+                : await downloadHandle.TryDownloadString(item.Url, true, "");
 
             if (ruleSetsString.IsNullOrEmpty())
             {
@@ -2887,8 +2790,8 @@ public static class ConfigHandler
     {
         var currentItem = await AppManager.Instance.GetDNSItem(type);
 
-        using var downloadHandle = await DownloadService.CreateDownloadServiceWithCheck();
-        var templateContent = await downloadHandle.TryDownloadString(url);
+        var downloadHandle = new DownloadService();
+        var templateContent = await downloadHandle.TryDownloadString(url, true, "");
         if (templateContent.IsNullOrEmpty())
         {
             return currentItem;
@@ -2902,12 +2805,12 @@ public static class ConfigHandler
 
         if (!template.NormalDNS.IsNullOrEmpty())
         {
-            template.NormalDNS = await downloadHandle.TryDownloadString(template.NormalDNS);
+            template.NormalDNS = await downloadHandle.TryDownloadString(template.NormalDNS, true, "");
         }
 
         if (!template.TunDNS.IsNullOrEmpty())
         {
-            template.TunDNS = await downloadHandle.TryDownloadString(template.TunDNS);
+            template.TunDNS = await downloadHandle.TryDownloadString(template.TunDNS, true, "");
         }
 
         template.Id = currentItem.Id;
@@ -2937,16 +2840,20 @@ public static class ConfigHandler
         };
     }
 
-    public static async Task<SimpleDNSItem?> GetExternalSimpleDNSItem(string url)
+    public static async Task<SimpleDNSItem> GetExternalSimpleDNSItem(string url)
     {
-        using var downloadHandle = await DownloadService.CreateDownloadServiceWithCheck();
-        var templateContent = await downloadHandle.TryDownloadString(url);
+        var downloadHandle = new DownloadService();
+        var templateContent = await downloadHandle.TryDownloadString(url, true, "");
         if (templateContent.IsNullOrEmpty())
         {
             return null;
         }
 
         var template = JsonUtils.Deserialize<SimpleDNSItem>(templateContent);
+        if (template == null)
+        {
+            return null;
+        }
 
         return template;
     }

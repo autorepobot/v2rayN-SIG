@@ -79,12 +79,12 @@ public partial class CoreConfigV2rayService
                     tunInbound.settings.gateway.Add(address6);
                 }
 
-                var bindInterface = NetworkUtils.GetRealBindInterfaceName(_config.CoreBasicItem.BindInterface);
+                var bindInterface = _config.CoreBasicItem.BindInterface?.TrimEx();
                 if (!bindInterface.IsNullOrEmpty())
                 {
                     tunInbound.settings.autoOutboundsInterface = bindInterface;
                 }
-                tunInbound.sniffing = JsonUtils.DeepCopy(inbound.sniffing);
+                tunInbound.sniffing = inbound.sniffing;
                 // tunInbound.sniffing.routeOnly = inbound.sniffing.routeOnly;
                 tunInbound.sniffing.routeOnly = true;
 

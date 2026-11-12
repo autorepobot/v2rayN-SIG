@@ -11,6 +11,7 @@
     <ae:TextEditor
         Name="Editor"
         FontFamily="Cascadia Code,Consolas,Monospace"
+        FontSize="14"
         ShowLineNumbers="True">
         <ae:TextEditor.ContextMenu>
             <ContextMenu>

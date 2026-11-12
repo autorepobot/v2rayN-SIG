@@ -1,5 +1,6 @@
 namespace ServiceLib.Models.Entities;
 
+[Serializable]
 public class ProfileItem
 {
     private ProtocolExtraItem? _protocolExtraCache;

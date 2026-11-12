@@ -48,9 +48,7 @@ public class StatisticsXrayService
                     continue;
                 }
 
-                //var result = await HttpClientHelper.Instance.TryGetAsync(Url, token);
-                using var httpClient = HttpClientHelper.Instance.GetHttpClient(false);
-                var result = await httpClient.GetStringAsync(Url, token).ConfigureAwait(false);
+                var result = await HttpClientHelper.Instance.TryGetAsync(Url, token);
                 if (result != null)
                 {
                     var server = ParseOutput(result) ?? new ServerSpeedItem();

@@ -4,8 +4,7 @@ public class ProfileExManager
 {
     private static readonly Lazy<ProfileExManager> _instance = new(() => new());
     private ConcurrentBag<ProfileExItem> _lstProfileEx = [];
-    private readonly ConcurrentQueue<string> _queIndexIds = new();
-    private readonly Lock _profileExLock = new();
+    private readonly Queue<string> _queIndexIds = new();
     public static ProfileExManager Instance => _instance.Value;
     private static readonly string _tag = "ProfileExHandler";
 
@@ -28,51 +27,56 @@ public class ProfileExManager
     {
         await SQLiteHelper.Instance.ExecuteAsync($"delete from ProfileExItem where indexId not in ( select indexId from ProfileItem )");
 
-        var lstProfileEx = new ConcurrentBag<ProfileExItem>(await SQLiteHelper.Instance.TableAsync<ProfileExItem>().ToListAsync());
-        lock (_profileExLock)
-        {
-            _lstProfileEx = lstProfileEx;
-        }
+        _lstProfileEx = new(await SQLiteHelper.Instance.TableAsync<ProfileExItem>().ToListAsync());
     }
 
     private void IndexIdEnqueue(string indexId)
     {
-        if (indexId.IsNotEmpty())
+        if (indexId.IsNotEmpty() && !_queIndexIds.Contains(indexId))
         {
-            //Speed tests touch this from many threads; the save loop deduplicates IDs.
             _queIndexIds.Enqueue(indexId);
         }
     }
 
     private async Task SaveQueueIndexIds()
     {
-        var lstIds = new HashSet<string>();
-        while (_queIndexIds.TryDequeue(out var id))
+        var cnt = _queIndexIds.Count;
+        if (cnt > 0)
         {
-            lstIds.Add(id);
-        }
+            var lstExists = await SQLiteHelper.Instance.TableAsync<ProfileExItem>().ToListAsync();
+            List<ProfileExItem> lstInserts = [];
+            List<ProfileExItem> lstUpdates = [];
 
-        if (lstIds.Count > 0)
-        {
-            List<ProfileExItem> lstSaves = [];
-
-            foreach (var id in lstIds)
+            for (var i = 0; i < cnt; i++)
             {
+                var id = _queIndexIds.Dequeue();
+                var item = lstExists.FirstOrDefault(t => t.IndexId == id);
                 var itemNew = _lstProfileEx?.FirstOrDefault(t => t.IndexId == id);
                 if (itemNew is null)
                 {
                     continue;
                 }
 
-                lstSaves.Add(itemNew);
+                if (item is not null)
+                {
+                    lstUpdates.Add(itemNew);
+                }
+                else
+                {
+                    lstInserts.Add(itemNew);
+                }
             }
 
             try
             {
-                if (lstSaves.Count > 0)
+                if (lstInserts.Count > 0)
                 {
-                    //Another save may have inserted these rows since the queue was drained.
-                    await SQLiteHelper.Instance.ReplaceAllAsync(lstSaves);
+                    await SQLiteHelper.Instance.InsertAllAsync(lstInserts);
+                }
+
+                if (lstUpdates.Count > 0)
+                {
+                    await SQLiteHelper.Instance.UpdateAllAsync(lstUpdates);
                 }
             }
             catch (Exception ex)
@@ -99,26 +103,13 @@ public class ProfileExManager
 
     private ProfileExItem GetProfileExItem(string? indexId)
     {
-        var profileEx = _lstProfileEx.FirstOrDefault(t => t.IndexId == indexId);
-        if (profileEx is not null)
-        {
-            return profileEx;
-        }
-
-        lock (_profileExLock)
-        {
-            profileEx = _lstProfileEx.FirstOrDefault(t => t.IndexId == indexId);
-            return profileEx ?? AddProfileEx(indexId);
-        }
+        return _lstProfileEx.FirstOrDefault(t => t.IndexId == indexId) ?? AddProfileEx(indexId);
     }
 
     public async Task ClearAll()
     {
         await SQLiteHelper.Instance.ExecuteAsync($"delete from ProfileExItem ");
-        lock (_profileExLock)
-        {
-            _lstProfileEx = [];
-        }
+        _lstProfileEx = [];
     }
 
     public async Task SaveTo()

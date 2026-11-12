@@ -1,5 +1,6 @@
 namespace ServiceLib.Models.CoreConfigs;
 
+[Serializable]
 public class CoreInfo
 {
     public ECoreType CoreType { get; set; }
