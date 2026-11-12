@@ -1,7 +1,3 @@
-# Run from the v2rayN repository root on Windows with .NET 10 SDK and WiX 7 prerequisites.
-# Build v2rayN WPF, Avalonia Desktop and AmazTool from source with dotnet publish.
-# Download sing-box architecture-matched official GitHub Release packages.
-# Never download or consume a pre-built v2rayN application ZIP.
 [CmdletBinding()]
 param(
     [ValidateSet('all', 'x64', 'x86', 'i386', 'arm64')]
@@ -385,7 +381,7 @@ $themeTemplate = @'
   </Window>
 </Theme>
 '@
-# Bootstrapper theme is embedded in this script; no external theme file is required.
+
 [void][System.Xml.Linq.XDocument]::Parse($themeTemplate)
 $script:Stage = 'Validating four-language translations'
 
