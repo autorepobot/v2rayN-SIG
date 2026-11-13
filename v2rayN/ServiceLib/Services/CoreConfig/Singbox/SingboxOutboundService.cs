@@ -356,6 +356,8 @@ public partial class CoreConfigSingboxService
             {
                 case EConfigType.WireGuard:
                     {
+                        endpoint.server = null;
+                        endpoint.server_port = null;
                         endpoint.address = Utils.String2List(protocolExtra.WgInterfaceAddress)?.Select(s => s.Trim()).ToList() ?? ["172.16.0.2/32"];
                         var peer = new Peer4Sbox
                         {
@@ -482,13 +484,6 @@ public partial class CoreConfigSingboxService
                     tls.certificate = certs;
                     tls.insecure = false;
                 }
-                else if (!_node.CertPubKeySha.IsNullOrEmpty())
-                {
-                    tls.certificate_public_key_sha256 = _node.CertPubKeySha
-                        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                        .ToList();
-                    tls.insecure = false;
-                }
             }
             else if (_node.StreamSecurity == Global.StreamSecurityReality)
             {
@@ -530,7 +525,7 @@ public partial class CoreConfigSingboxService
                         transport.type = nameof(ETransport.http);
                         transport.host = transportExtra.Host.IsNullOrEmpty()
                             ? null
-                            : Utils.String2List(transportExtra.Host);
+                            : JsonUtils.SerializeToArray(Utils.String2List(transportExtra.Host));
                         transport.path = transportExtra.Path.NullIfEmpty();
                         if (!useragentValue.IsNullOrEmpty())
                         {
@@ -547,7 +542,9 @@ public partial class CoreConfigSingboxService
                     // Parse eh and ed parameters from path using regex
                     if (!wsPath.IsNullOrEmpty())
                     {
-                        var edRegex = new Regex(@"[?&]ed=(\d+)");
+                        // Keep the '?' or '&' in front of "ed" out of the match, so removing it
+                        // leaves "/ws?ed=2048&key=value" as "/ws?key=value", not "/ws&key=value".
+                        var edRegex = new Regex(@"(?<=[?&])ed=(\d+)&?");
                         var edMatch = edRegex.Match(wsPath);
                         if (edMatch.Success && int.TryParse(edMatch.Groups[1].Value, out var edValue))
                         {
@@ -555,11 +552,7 @@ public partial class CoreConfigSingboxService
                             transport.early_data_header_name = "Sec-WebSocket-Protocol";
 
                             wsPath = edRegex.Replace(wsPath, "");
-                            wsPath = wsPath.Replace("?&", "?");
-                            if (wsPath.EndsWith('?'))
-                            {
-                                wsPath = wsPath.TrimEnd('?');
-                            }
+                            wsPath = wsPath.TrimEnd('&').TrimEnd('?');
                         }
 
                         var ehRegex = new Regex(@"[?&]eh=([^&]+)");

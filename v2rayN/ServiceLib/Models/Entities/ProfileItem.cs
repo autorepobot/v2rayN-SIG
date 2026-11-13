@@ -1,6 +1,5 @@
 namespace ServiceLib.Models.Entities;
 
-[Serializable]
 public class ProfileItem
 {
     private ProtocolExtraItem? _protocolExtraCache;
@@ -195,7 +194,6 @@ public class ProfileItem
     public bool? MuxEnabled { get; set; }
     public string Cert { get; set; }
     public string CertSha { get; set; }
-    public string CertPubKeySha { get; set; }
     public string EchConfigList { get; set; }
     public string VerifyPeerCertByName { get; set; }
     public string Finalmask { get; set; }

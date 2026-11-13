@@ -578,7 +578,11 @@ public partial class MainWindowViewModel : MyReactiveObject
 
     public async Task UpdateSubscriptionProcess(string subId, bool blProxy)
     {
-        await Task.Run(async () => await SubscriptionHandler.UpdateProcess(_config, subId, blProxy, UpdateTaskHandler));
+        await Task.Run(async () =>
+        {
+            var handler = new SubscriptionHandler(_config, blProxy, UpdateTaskHandler);
+            await handler.UpdateProcess(subId);
+        });
     }
 
     #endregion Subscription
@@ -756,19 +760,12 @@ public partial class MainWindowViewModel : MyReactiveObject
         }
     }
 
-    private bool _hasAutoSelectedForSingBox = false;
-
     private void ReloadResult(bool showClashUI)
     {
         RxSchedulers.MainThreadScheduler.Schedule(() =>
         {
             ShowClashUI = showClashUI;
-            if (showClashUI && !_hasAutoSelectedForSingBox)
-            {
-                TabMainSelectedIndex = 0;
-                _hasAutoSelectedForSingBox = true;
-            }
-            else if (!showClashUI || TabMainSelectedIndex < 0)
+            if (!showClashUI || TabMainSelectedIndex < 0)
             {
                 TabMainSelectedIndex = 0;
             }
@@ -799,7 +796,8 @@ public partial class MainWindowViewModel : MyReactiveObject
         });
 
         await ConfigHandler.SaveConfig(_config);
-        await new UpdateService(_config, UpdateTaskHandler).UpdateGeoFileAll();
+        using var downloadService = await DownloadService.CreateDownloadServiceWithCheck();
+        await new UpdateService(downloadService, _config, UpdateTaskHandler).UpdateGeoFileAll();
         await Reload();
     }
 

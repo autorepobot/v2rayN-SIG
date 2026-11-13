@@ -53,7 +53,8 @@
                             Grid.Row="0"
                             Grid.Column="1"
                             Width="200"
-                            Margin="{StaticResource Margin4}" />
+                            Margin="{StaticResource Margin4}"
+                            HorizontalAlignment="Left" />
                         <TextBlock
                             Grid.Row="0"
                             Grid.Column="2"
@@ -167,7 +168,8 @@
                             Grid.Row="9"
                             Grid.Column="1"
                             Width="200"
-                            Margin="{StaticResource Margin4}" />
+                            Margin="{StaticResource Margin4}"
+                            HorizontalAlignment="Left" />
 
                         <TextBlock
                             Grid.Row="10"
@@ -180,7 +182,8 @@
                             Grid.Row="10"
                             Grid.Column="1"
                             Width="200"
-                            Margin="{StaticResource Margin4}" />
+                            Margin="{StaticResource Margin4}"
+                            HorizontalAlignment="Left" />
 
                         <TextBlock
                             Grid.Row="12"
@@ -437,12 +440,13 @@
                             Margin="{StaticResource Margin4}"
                             VerticalAlignment="Center"
                             Text="{x:Static resx:ResUI.TbSettingsBindInterface}" />
-                        <TextBox
-                            x:Name="txtbindInterface"
+                        <ComboBox
+                            x:Name="cmbbindInterface"
                             Grid.Row="22"
                             Grid.Column="1"
                             Width="200"
-                            Margin="{StaticResource Margin4}" />
+                            Margin="{StaticResource Margin4}"
+                            IsEditable="True" />
                         <TextBlock
                             Grid.Row="22"
                             Grid.Column="2"
@@ -463,6 +467,7 @@
                             Grid.Column="1"
                             Width="200"
                             Margin="{StaticResource Margin4}"
+                            HorizontalAlignment="Left"
                             PlaceholderText="0.0.0.0" />
                         <TextBlock
                             Grid.Row="23"
@@ -680,15 +685,13 @@
                             Grid.Column="0"
                             Margin="{StaticResource Margin4}"
                             VerticalAlignment="Center"
-                            IsVisible="{Binding BlIsWindows}"
                             Text="{x:Static resx:ResUI.TbSettingsEnableDragDropSort}" />
                         <ToggleSwitch
                             x:Name="togEnableDragDropSort"
                             Grid.Row="9"
                             Grid.Column="1"
                             Margin="{StaticResource Margin4}"
-                            HorizontalAlignment="Left"
-                            IsVisible="{Binding BlIsWindows}" />
+                            HorizontalAlignment="Left" />
 
                         <TextBlock
                             Grid.Row="10"
@@ -1032,7 +1035,7 @@
                         Margin="{StaticResource Margin4}"
                         ColumnDefinitions="Auto,Auto,Auto"
                         DockPanel.Dock="Top"
-                        RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+                        RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
 
                         <TextBlock
                             Grid.Row="2"
@@ -1182,6 +1185,20 @@
                         <ComboBox
                             x:Name="cmbIpv6Address"
                             Grid.Row="11"
+                            Grid.Column="1"
+                            Width="200"
+                            Margin="{StaticResource Margin4}"
+                            HorizontalAlignment="Left" />
+
+                        <TextBlock
+                            Grid.Row="12"
+                            Grid.Column="0"
+                            Margin="{StaticResource Margin4}"
+                            VerticalAlignment="Center"
+                            Text="{x:Static resx:ResUI.TbSettingsTunDnsMode}" />
+                        <ComboBox
+                            x:Name="cmbDnsMode"
+                            Grid.Row="12"
                             Grid.Column="1"
                             Width="200"
                             Margin="{StaticResource Margin4}"
