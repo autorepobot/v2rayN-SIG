@@ -71,7 +71,7 @@ jobs:
             }
             $options.Version = $version
           }
-          $scriptPath = Join-Path $env:GITHUB_WORKSPACE 'package-windows.ps1'
+          $scriptPath = Join-Path $env:GITHUB_WORKSPACE 'package-windows-sig.ps1'
           if (-not (Test-Path -LiteralPath $scriptPath -PathType Leaf)) {
             throw "Packaging script not found: $scriptPath"
           }
