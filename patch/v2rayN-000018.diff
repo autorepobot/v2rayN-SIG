@@ -1,0 +1,13 @@
+diff --git a/v2rayN/v2rayN.Desktop/App.axaml.cs b/v2rayN/v2rayN.Desktop/App.axaml.cs
+index b53b4959e01..7142d3a6225 100644
+--- a/v2rayN/v2rayN.Desktop/App.axaml.cs
++++ b/v2rayN/v2rayN.Desktop/App.axaml.cs
+@@ -93,7 +93,7 @@ private static void RestoreMacOSAccessoryPolicyAfterMiniaturize(MainWindow mainW
+     private static void QueueMacOSAccessoryPolicyRestore(MainWindow mainWindow)
+     {
+         // AppKit may keep isMiniaturized set until the Dock restore animation finishes.
+-        DispatcherTimer.RunOnce(() => RestoreMacOSAccessoryPolicy(mainWindow), TimeSpan.FromMilliseconds(300));
++        DispatcherTimer.RunOnce(() => RestoreMacOSAccessoryPolicy(mainWindow), TimeSpan.FromMilliseconds(330));
+     }
+ 
+     private static void RestoreMacOSAccessoryPolicy(MainWindow mainWindow)

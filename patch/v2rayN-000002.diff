@@ -1,0 +1,11 @@
+diff --git a/v2rayN/ServiceLib/Manager/AppManager.cs b/v2rayN/ServiceLib/Manager/AppManager.cs
+--- a/v2rayN/ServiceLib/Manager/AppManager.cs
++++ b/v2rayN/ServiceLib/Manager/AppManager.cs
+@@ -177,7 +177,7 @@
+             return (ECoreType)profileItem.CoreType;
+         }
+
+         var item = CurrentConfig.CoreTypeItem?.FirstOrDefault(it => it.ConfigType == eConfigType);
+-        return item?.CoreType ?? ECoreType.Xray;
++        return item?.CoreType ?? ECoreType.sing_box;
+     }

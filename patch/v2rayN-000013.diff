@@ -1,0 +1,58 @@
+diff --git a/v2rayN/v2rayN.Desktop/Views/ProfilesView.axaml.cs b/v2rayN/v2rayN.Desktop/Views/ProfilesView.axaml.cs
+--- a/v2rayN/v2rayN.Desktop/Views/ProfilesView.axaml.cs
++++ b/v2rayN/v2rayN.Desktop/Views/ProfilesView.axaml.cs
+@@ -392,17 +392,18 @@
+                             item2.Width = new DataGridLength(item.Width, DataGridLengthUnitType.Pixel);
+                             item2.DisplayIndex = displayIndex++;
+                         }
+-                        if (item.Name.StartsWith("to", StringComparison.CurrentCultureIgnoreCase))
+-                        {
+-                            item2.IsVisible = _config.GuiItem.EnableStatistics;
+-                        }
+-                        if (item.Name.Equals("IpInfo", StringComparison.CurrentCultureIgnoreCase))
+-                        {
+-                            item2.IsVisible = _config.SpeedTestItem.IPAPIUrl.IsNotEmpty() && !_config.UiItem.HideColumnIpInfo;
+-                        }
+                     }
+                 }
+             }
++            foreach (var c in lstProfiles.Columns)
++            {
++                if (c.Tag is not string tag) continue;
++                if (tag.StartsWith("to", StringComparison.CurrentCultureIgnoreCase))
++                    c.IsVisible = _config.GuiItem.EnableStatistics;
++                else if (tag.Equals("IpInfo", StringComparison.CurrentCultureIgnoreCase))
++                    c.IsVisible = _config.SpeedTestItem.IPAPIUrl.IsNotEmpty() && !_config.UiItem.HideColumnIpInfo;
++            }
++
+             lstProfiles.FrozenColumnCount = _config.UiItem.FrozenColumnCount ?? 0;
+         }
+         catch (Exception ex)
+diff --git a/v2rayN/v2rayN.Windows/Views/ProfilesView.xaml.cs b/v2rayN/v2rayN.Windows/Views/ProfilesView.xaml.cs
+--- a/v2rayN/v2rayN.Windows/Views/ProfilesView.xaml.cs
++++ b/v2rayN/v2rayN.Windows/Views/ProfilesView.xaml.cs
+@@ -346,16 +346,16 @@
+                             item2.Width = item.Width;
+                             item2.DisplayIndex = displayIndex++;
+                         }
+-                        if (item.Name.StartsWith("to", StringComparison.CurrentCultureIgnoreCase))
+-                        {
+-                            item2.Visibility = _config.GuiItem.EnableStatistics ? Visibility.Visible : Visibility.Hidden;
+-                        }
+-                        if (item.Name.Equals("IpInfo", StringComparison.CurrentCultureIgnoreCase))
+-                        {
+-                            item2.Visibility = _config.SpeedTestItem.IPAPIUrl.IsNotEmpty() && !_config.UiItem.HideColumnIpInfo ? Visibility.Visible : Visibility.Hidden;
+-                        }
+                     }
+                 }
++            }
++
++            foreach (var c in lstProfiles.Columns.Cast<MyDGTextColumn>())
++            {
++                if (c.ExName.StartsWith("to", StringComparison.CurrentCultureIgnoreCase))
++                    c.Visibility = _config.GuiItem.EnableStatistics ? Visibility.Visible : Visibility.Hidden;
++                else if (c.ExName.Equals("IpInfo", StringComparison.CurrentCultureIgnoreCase))
++                    c.Visibility = _config.SpeedTestItem.IPAPIUrl.IsNotEmpty() && !_config.UiItem.HideColumnIpInfo ? Visibility.Visible : Visibility.Hidden;
+             }
+         }
+         catch (Exception ex)
