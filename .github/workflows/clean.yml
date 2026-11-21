@@ -1,0 +1,51 @@
+name: 🀫 Clear Git History
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_user:
+        description: '自定义提交用户名'
+        required: true
+        default: 'repobot'
+      commit_email:
+        description: '自定义提交邮箱'
+        required: true
+        default: 'bot@example.com'
+      commit_message:
+        description: '自定义 Commit 信息'
+        required: true
+        default: 'Update information'
+
+jobs:
+  clear-history:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Wipe History & Force Push
+        run: |
+          git config --local user.name "${{ github.event.inputs.commit_user }}"
+          git config --local user.email "${{ github.event.inputs.commit_email }}"
+          
+          BRANCH_NAME=${{ github.ref_name }}
+          
+          echo "正在清理分支 [$BRANCH_NAME] 的历史记录..."
+          
+          git checkout --orphan temp_clean_branch
+          
+          git add -A
+          
+          git commit -m "${{ github.event.inputs.commit_message }}"
+          
+          git branch -D $BRANCH_NAME
+          
+          git branch -m $BRANCH_NAME
+          
+          git push origin $BRANCH_NAME --force

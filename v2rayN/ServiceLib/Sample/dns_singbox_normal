@@ -1,0 +1,31 @@
+{
+  "servers": [
+    {
+      "tag": "remote",
+      "type": "tcp",
+      "server": "8.8.8.8",
+      "detour": "proxy"
+    },
+    {
+      "tag": "local",
+      "type": "udp",
+      "server": "223.5.5.5"
+    }
+  ],
+  "rules": [
+    {
+      "rule_set": [
+        "geosite-google"
+      ],
+      "server": "remote"
+    },
+    {
+      "rule_set": [
+        "geosite-cn"
+      ],
+      "server": "local"
+    }
+  ],
+  "final": "remote",
+  "strategy": "prefer_ipv4"
+}

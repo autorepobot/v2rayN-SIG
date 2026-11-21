@@ -1,0 +1,32 @@
+diff --git a/v2rayN/v2rayN.Desktop/Views/ProfilesView.axaml.cs b/v2rayN/v2rayN.Desktop/Views/ProfilesView.axaml.cs
+index 2e09404a249..f1a5069131c 100644
+--- a/v2rayN/v2rayN.Desktop/Views/ProfilesView.axaml.cs
++++ b/v2rayN/v2rayN.Desktop/Views/ProfilesView.axaml.cs
+@@ -389,17 +389,19 @@ private void RestoreUI()
+                             item2.Width = new DataGridLength(item.Width, DataGridLengthUnitType.Pixel);
+                             item2.DisplayIndex = displayIndex++;
+                         }
+-                        if (item.Name.StartsWith("to", StringComparison.CurrentCultureIgnoreCase))
+-                        {
+-                            item2.IsVisible = _config.GuiItem.EnableStatistics;
+-                        }
+-                        if (item.Name.Equals("IpInfo", StringComparison.CurrentCultureIgnoreCase))
+-                        {
+-                            item2.IsVisible = _config.SpeedTestItem.IPAPIUrl.IsNotEmpty() && !_config.UiItem.HideColumnIpInfo;
+-                        }
+                     }
+                 }
+             }
++
++            foreach (var c in lstProfiles.Columns)
++            {
++                if (c.Tag is not string tag) continue;
++                if (tag.StartsWith("to", StringComparison.CurrentCultureIgnoreCase))
++                    c.IsVisible = _config.GuiItem.EnableStatistics;
++                else if (tag.Equals("IpInfo", StringComparison.CurrentCultureIgnoreCase))
++                    c.IsVisible = _config.SpeedTestItem.IPAPIUrl.IsNotEmpty() && !_config.UiItem.HideColumnIpInfo;
++            }
++
+         }
+         catch (Exception ex)
+         {
