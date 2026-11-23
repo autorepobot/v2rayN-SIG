@@ -1,0 +1,328 @@
+diff --git a/package-debian-x86.sh b/package-debian-x86.sh
+index be3d3fdb09d..50d60e22740 100644
+--- a/package-debian-x86.sh
++++ b/package-debian-x86.sh
+@@ -18,8 +18,8 @@ DOTNET_SDK_DIR=""
+ 
+ DOTNET_NUPKG_BASE="${DOTNET_NUPKG_BASE:-https://github.com/autorepobot/dotnet-nupkg-prebuild/releases/download}"
+ SKIASHARP_BASE="${SKIASHARP_BASE:-https://github.com/autorepobot/SkiaSharp-ppc64le/releases/download}"
+-SkiaSharp_VERSION="${SkiaSharp_VERSION:-4.156.0}"
+-HarfBuzzSharp_VERSION="${HarfBuzzSharp_VERSION:-14.4.0.100}"
++SkiaSharp_VERSION="${SkiaSharp_VERSION:-3.119.4}"
++HarfBuzzSharp_VERSION="${HarfBuzzSharp_VERSION:-8.3.1.5}"
+ 
+ DOTNET_SDK_VERSION="${DOTNET_SDK_VERSION:-10.0.114}"
+ DOTNET_X86_VERSION="${DOTNET_X86_VERSION:-10.0.114}"
+@@ -304,8 +304,6 @@ resolve_version() {
+ 
+ download_nuget_packages() {
+   NUGET_CACHE_DIR="$(mktemp -d)"
+-  # Official packages with the same version omit the custom PPC assets.
+-  export NUGET_PACKAGES="$NUGET_CACHE_DIR/packages"
+ 
+   local x86_rt
+   x86_rt="$(get_runtime_version "$DOTNET_X86_VERSION")"
+@@ -765,10 +763,6 @@ package_binary() {
+   prepare_deb_target_arch
+ 
+   extra_depends="libc6 (>= 2.36), fontconfig (>= 2.14.1), desktop-file-utils (>= 0.26), xdg-utils (>= 1.1.3), coreutils (>= 9.1), bash (>= 5.2.15), libfreetype6 (>= 2.12)"
+-  # .NET runtime dependencies not covered by ELF dependency scanning.
+-  extra_depends+=", ca-certificates, libgssapi-krb5-2, libicu76 | libicu72, libssl3t64 | libssl3, tzdata"
+-  # Avalonia loads X11 dynamically; libsm6 also depends on libice6.
+-  extra_depends+=", libx11-6, libsm6"
+ 
+   mkdir -p "$workdir/debian"
+   cat > "$workdir/debian/control" <<EOF_CONTROL
+diff --git a/package-debian.sh b/package-debian.sh
+index b632a10802d..1e6a86126d5 100755
+--- a/package-debian.sh
++++ b/package-debian.sh
+@@ -17,8 +17,8 @@ OUTPUT_DIR="${HOME}/debbuild"
+ NUGET_CACHE_DIR=""
+ DOTNET_NUPKG_BASE="${DOTNET_NUPKG_BASE:-https://github.com/autorepobot/dotnet-nupkg-prebuild/releases/download}"
+ SKIASHARP_BASE="${SKIASHARP_BASE:-https://github.com/autorepobot/SkiaSharp-ppc64le/releases/download}"
+-SkiaSharp_VERSION="${SkiaSharp_VERSION:-4.156.0}"
+-HarfBuzzSharp_VERSION="${HarfBuzzSharp_VERSION:-14.4.0.100}"
++SkiaSharp_VERSION="${SkiaSharp_VERSION:-3.119.4}"
++HarfBuzzSharp_VERSION="${HarfBuzzSharp_VERSION:-8.3.1.5}"
+ 
+ DOTNET_SDK_VERSION="${DOTNET_SDK_VERSION:-10.0.114}"
+ 
+@@ -368,8 +368,6 @@ resolve_version() {
+ 
+ download_nuget_packages() {
+   NUGET_CACHE_DIR="$(mktemp -d)"
+-  # Official packages with the same version omit the custom PPC assets.
+-  export NUGET_PACKAGES="$NUGET_CACHE_DIR/packages"
+ 
+   local riscv_rt ppc64le_rt loong_rt
+   riscv_rt="$(get_runtime_version "$DOTNET_RISCV_VERSION")"
+@@ -833,10 +831,6 @@ package_binary() {
+   prepare_deb_target_arch "$short"
+ 
+   extra_depends="libc6 (>= 2.39), fontconfig (>= 2.15.0), desktop-file-utils (>= 0.26), xdg-utils (>= 1.1.3), coreutils (>= 9.4), bash (>= 5.2.21), libfreetype6 (>= 2.13)"
+-  # .NET runtime dependencies not covered by ELF dependency scanning.
+-  extra_depends+=", ca-certificates, libgssapi-krb5-2, libicu76 | libicu72, libssl3t64 | libssl3, tzdata"
+-  # Avalonia loads X11 dynamically; libsm6 also depends on libice6.
+-  extra_depends+=", libx11-6, libsm6"
+ 
+   mkdir -p "$workdir/debian"
+   cat > "$workdir/debian/control" <<EOF
+diff --git a/package-rhel-x86.sh b/package-rhel-x86.sh
+index 6353402f9a6..8f8f34f3a48 100644
+--- a/package-rhel-x86.sh
++++ b/package-rhel-x86.sh
+@@ -16,8 +16,8 @@ RPM_TOPDIR="${HOME}/rpmbuild"
+ NUGET_CACHE_DIR=""
+ DOTNET_NUPKG_BASE="${DOTNET_NUPKG_BASE:-https://github.com/autorepobot/dotnet-nupkg-prebuild/releases/download}"
+ SKIASHARP_BASE="${SKIASHARP_BASE:-https://github.com/autorepobot/SkiaSharp-ppc64le/releases/download}"
+-SkiaSharp_VERSION="${SkiaSharp_VERSION:-4.156.0}"
+-HarfBuzzSharp_VERSION="${HarfBuzzSharp_VERSION:-14.4.0.100}"
++SkiaSharp_VERSION="${SkiaSharp_VERSION:-3.119.4}"
++HarfBuzzSharp_VERSION="${HarfBuzzSharp_VERSION:-8.3.1.5}"
+ 
+ DOTNET_SDK_VERSION="${DOTNET_SDK_VERSION:-10.0.114}"
+ DOTNET_X86_VERSION="${DOTNET_X86_VERSION:-10.0.114}"
+@@ -306,8 +306,6 @@ resolve_version() {
+ 
+ download_nuget_packages() {
+   NUGET_CACHE_DIR="$(mktemp -d)"
+-  # Official packages with the same version omit the custom PPC assets.
+-  export NUGET_PACKAGES="$NUGET_CACHE_DIR/packages"
+ 
+   local x86_rt
+   x86_rt="$(get_runtime_version "$DOTNET_X86_VERSION")"
+@@ -808,11 +806,6 @@ ExclusiveArch:  i686
+ Source0:        __PKGROOT__.tar.gz
+ 
+ Requires:       cairo, pango, openssl, mesa-libEGL, mesa-libGL
+-# .NET runtime dependencies not covered by ELF dependency scanning.
+-# krb5-libs pulls the matching OpenSSL libraries and certificate bundle.
+-Requires:       krb5-libs%{?_isa}, libicu%{?_isa}, tzdata
+-# Avalonia loads X11 dynamically; libSM also requires the matching libICE.
+-Requires:       libX11%{?_isa}, libSM%{?_isa}
+ Requires:       glibc >= 2.39
+ Requires:       fontconfig >= 2.15.0
+ Requires:       desktop-file-utils >= 0.26
+diff --git a/package-rhel.sh b/package-rhel.sh
+index c1be00124ce..087252b1b12 100755
+--- a/package-rhel.sh
++++ b/package-rhel.sh
+@@ -17,8 +17,8 @@ RPM_TOPDIR="${HOME}/rpmbuild"
+ NUGET_CACHE_DIR=""
+ DOTNET_NUPKG_BASE="${DOTNET_NUPKG_BASE:-https://github.com/autorepobot/dotnet-nupkg-prebuild/releases/download}"
+ SKIASHARP_BASE="${SKIASHARP_BASE:-https://github.com/autorepobot/SkiaSharp-ppc64le/releases/download}"
+-SkiaSharp_VERSION="${SkiaSharp_VERSION:-4.156.0}"
+-HarfBuzzSharp_VERSION="${HarfBuzzSharp_VERSION:-14.4.0.100}"
++SkiaSharp_VERSION="${SkiaSharp_VERSION:-3.119.4}"
++HarfBuzzSharp_VERSION="${HarfBuzzSharp_VERSION:-8.3.1.5}"
+ 
+ DOTNET_SDK_VERSION="${DOTNET_SDK_VERSION:-10.0.114}"
+ 
+@@ -340,8 +340,6 @@ resolve_version() {
+ 
+ download_nuget_packages() {
+   NUGET_CACHE_DIR="$(mktemp -d)"
+-  # Official packages with the same version omit the custom PPC assets.
+-  export NUGET_PACKAGES="$NUGET_CACHE_DIR/packages"
+ 
+   local riscv_rt ppc64le_rt loong_rt
+   riscv_rt="$(get_runtime_version "$DOTNET_RISCV_VERSION")"
+@@ -719,11 +717,6 @@ ExclusiveArch:  aarch64 x86_64 riscv64 ppc64le loongarch64
+ Source0:        __PKGROOT__.tar.gz
+ 
+ Requires:       cairo, pango, openssl, mesa-libEGL, mesa-libGL
+-# .NET runtime dependencies not covered by ELF dependency scanning.
+-# krb5-libs pulls the matching OpenSSL libraries and certificate bundle.
+-Requires:       krb5-libs%{?_isa}, libicu%{?_isa}, tzdata
+-# Avalonia loads X11 dynamically; libSM also requires the matching libICE.
+-Requires:       libX11%{?_isa}, libSM%{?_isa}
+ Requires:       glibc >= 2.39
+ Requires:       fontconfig >= 2.15.0
+ Requires:       desktop-file-utils >= 0.26
+diff --git a/v2rayN/Directory.Packages.props b/v2rayN/Directory.Packages.props
+index 33fb931bec7..2908f0d56e2 100644
+--- a/v2rayN/Directory.Packages.props
++++ b/v2rayN/Directory.Packages.props
+@@ -29,9 +29,8 @@
+     <PackageVersion Include="TUnit.Assertions.Should" Version="1.72.16-beta" />
+     <PackageVersion Include="WebDav.Client" Version="2.9.0" />
+     <PackageVersion Include="YamlDotNet" Version="18.1.0" />
+-    <PackageVersion Include="ZXing.Net.Bindings.SkiaSharp" Version="0.16.25" />
+-    <PackageVersion Include="SkiaSharp" Version="4.156.0" />
+-    <PackageVersion Include="SkiaSharp.NativeAssets.Linux" Version="4.156.0" />
+-    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Linux" Version="14.4.0.100" />
++    <PackageVersion Include="ZXing.Net.Bindings.SkiaSharp" Version="0.16.22" />
++    <PackageVersion Include="SkiaSharp.NativeAssets.Linux" Version="3.119.4" />
++    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Linux" Version="8.3.1.5" />
+   </ItemGroup>
+ </Project>
+diff --git a/v2rayN/ServiceLib.Tests/Common/QRCodeUtilsTests.cs b/v2rayN/ServiceLib.Tests/Common/QRCodeUtilsTests.cs
+deleted file mode 100644
+index c9855522c44..00000000000
+--- a/v2rayN/ServiceLib.Tests/Common/QRCodeUtilsTests.cs
++++ /dev/null
+@@ -1,62 +0,0 @@
+-using SkiaSharp;
+-
+-namespace ServiceLib.Tests.Common;
+-
+-public class QRCodeUtilsTests
+-{
+-    private const string ShareUri = "vless://12345678-1234-1234-1234-123456789abc@example.invalid:443?security=tls#native-qr-test";
+-
+-    [Test]
+-    [Arguments(false, false)]
+-    [Arguments(true, false)]
+-    [Arguments(false, true)]
+-    public async Task ParseBarcode_ImageBytes_ShouldRecoverShareUri(bool mirrored, bool rotated)
+-    {
+-        var bytes = QRCodeUtils.GenQRCode(ShareUri);
+-        if (mirrored || rotated)
+-        {
+-            bytes = TransformImage(bytes!, mirrored, rotated);
+-        }
+-
+-        await QRCodeUtils.ParseBarcode(bytes).Should().BeEqualTo(ShareUri);
+-    }
+-
+-    [Test]
+-    public async Task ParseBarcode_ImageFile_ShouldRecoverShareUri()
+-    {
+-        var path = Path.Combine(Path.GetTempPath(), $"v2rayn-qr-{Guid.NewGuid():N}.png");
+-        try
+-        {
+-            await File.WriteAllBytesAsync(path, QRCodeUtils.GenQRCode(ShareUri)!);
+-
+-            await QRCodeUtils.ParseBarcode(path).Should().BeEqualTo(ShareUri);
+-        }
+-        finally
+-        {
+-            File.Delete(path);
+-        }
+-    }
+-
+-    private static byte[] TransformImage(byte[] bytes, bool mirrored, bool rotated)
+-    {
+-        using var image = SKImage.FromEncodedData(bytes);
+-        using var surface = SKSurface.Create(new SKImageInfo(image.Width, image.Height));
+-        var canvas = surface.Canvas;
+-        canvas.Clear(SKColors.White);
+-        if (mirrored)
+-        {
+-            canvas.Translate(image.Width, 0);
+-            canvas.Scale(-1, 1);
+-        }
+-        if (rotated)
+-        {
+-            canvas.Translate(image.Width / 2f, image.Height / 2f);
+-            canvas.RotateDegrees(90);
+-            canvas.Translate(-image.Width / 2f, -image.Height / 2f);
+-        }
+-        canvas.DrawImage(image, 0, 0, SKSamplingOptions.Default);
+-        using var transformed = surface.Snapshot();
+-        using var encoded = transformed.Encode(SKEncodedImageFormat.Png, 100);
+-        return encoded.ToArray();
+-    }
+-}
+diff --git a/v2rayN/ServiceLib.Tests/ServiceLib.Tests.csproj b/v2rayN/ServiceLib.Tests/ServiceLib.Tests.csproj
+index 8c1b3c38367..98c31aa6109 100644
+--- a/v2rayN/ServiceLib.Tests/ServiceLib.Tests.csproj
++++ b/v2rayN/ServiceLib.Tests/ServiceLib.Tests.csproj
+@@ -8,7 +8,6 @@
+     </PropertyGroup>
+ 
+     <ItemGroup>
+-        <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
+         <PackageReference Include="TUnit" />
+         <PackageReference Include="TUnit.Assertions.Should" />
+     </ItemGroup>
+diff --git a/v2rayN/ServiceLib/Common/QRCodeUtils.cs b/v2rayN/ServiceLib/Common/QRCodeUtils.cs
+index cc1b9d25f57..d9015367ab4 100644
+--- a/v2rayN/ServiceLib/Common/QRCodeUtils.cs
++++ b/v2rayN/ServiceLib/Common/QRCodeUtils.cs
+@@ -119,7 +119,7 @@ private static SKBitmap FlipBitmap(SKBitmap bmp)
+         // horizontally
+         canvas.Translate(bmp.Width, 0);
+         canvas.Scale(-1, 1);
+-        canvas.DrawBitmap(bmp, 0, 0, SKSamplingOptions.Default);
++        canvas.DrawBitmap(bmp, 0, 0);
+         return flipped;
+     }
+ }
+diff --git a/v2rayN/v2rayN.WebAPI/Tests/SniffingSettingsIntegrationTests.cs b/v2rayN/v2rayN.WebAPI/Tests/SniffingSettingsIntegrationTests.cs
+index e76fb1fdcf2..e99f17532dd 100644
+--- a/v2rayN/v2rayN.WebAPI/Tests/SniffingSettingsIntegrationTests.cs
++++ b/v2rayN/v2rayN.WebAPI/Tests/SniffingSettingsIntegrationTests.cs
+@@ -157,8 +157,8 @@ private static JsonNode Generate(ECoreType coreType, Config config)
+ 
+     internal static void BindAppManagerConfig(Config config)
+     {
+-        var field = typeof(ConfigState).GetField("_current", BindingFlags.Instance | BindingFlags.NonPublic);
+-        field?.SetValue(ConfigState.Instance, config);
++        var field = typeof(AppManager).GetField("_config", BindingFlags.Instance | BindingFlags.NonPublic);
++        field?.SetValue(AppManager.Instance, config);
+     }
+ 
+     private static ProfileItem CreateVmessNode(ECoreType coreType)
+diff --git a/v2rayN/v2rayN.WebAPI/Tests/SubscriptionCreationTests.cs b/v2rayN/v2rayN.WebAPI/Tests/SubscriptionCreationTests.cs
+index a3a66b8059c..d8081ca538a 100644
+--- a/v2rayN/v2rayN.WebAPI/Tests/SubscriptionCreationTests.cs
++++ b/v2rayN/v2rayN.WebAPI/Tests/SubscriptionCreationTests.cs
+@@ -12,9 +12,9 @@ public class SubscriptionCreationTests
+     public async Task EmptyUrlSubscriptionIsCreatedAndReturnedWithAnEmptyUrl()
+     {
+         var previousLocalData = Environment.GetEnvironmentVariable(Global.LocalAppData);
+-        var manager = ConfigState.Instance;
+-        var configField = typeof(ConfigState).GetField("_current", BindingFlags.Instance | BindingFlags.NonPublic)
+-            ?? throw new MissingFieldException(typeof(ConfigState).FullName, "_current");
++        var manager = AppManager.Instance;
++        var configField = typeof(AppManager).GetField("_config", BindingFlags.Instance | BindingFlags.NonPublic)
++            ?? throw new MissingFieldException(typeof(AppManager).FullName, "_config");
+         var previousConfig = configField.GetValue(manager);
+         var config = new Config();
+         SubItem? saved = null;
+diff --git a/v2rayN/v2rayN.WebAPI/Tests/UpdatePreReleaseSettingsTests.cs b/v2rayN/v2rayN.WebAPI/Tests/UpdatePreReleaseSettingsTests.cs
+index 38143cebd0c..23727cedd05 100644
+--- a/v2rayN/v2rayN.WebAPI/Tests/UpdatePreReleaseSettingsTests.cs
++++ b/v2rayN/v2rayN.WebAPI/Tests/UpdatePreReleaseSettingsTests.cs
+@@ -152,9 +152,9 @@ public async Task InvalidPerTargetPreReleaseSettingsDoNotMutateConfig(string tar
+ 
+     private sealed class RuntimeFixture : IDisposable
+     {
+-        private readonly FieldInfo _configField = typeof(ConfigState)
+-            .GetField("_current", BindingFlags.Instance | BindingFlags.NonPublic)
+-            ?? throw new MissingFieldException(typeof(ConfigState).FullName, "_current");
++        private readonly FieldInfo _configField = typeof(AppManager)
++            .GetField("_config", BindingFlags.Instance | BindingFlags.NonPublic)
++            ?? throw new MissingFieldException(typeof(AppManager).FullName, "_config");
+         private readonly object? _previousConfig;
+         private readonly string? _previousLocalData;
+         private readonly string _configPath;
+@@ -166,7 +166,7 @@ private sealed class RuntimeFixture : IDisposable
+ 
+         public RuntimeFixture()
+         {
+-            _previousConfig = _configField.GetValue(ConfigState.Instance);
++            _previousConfig = _configField.GetValue(AppManager.Instance);
+             _previousLocalData = Environment.GetEnvironmentVariable(Global.LocalAppData);
+             // ConfigHandler writes only into the test build directory, never user data.
+             _configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "guiConfigs", Global.ConfigFileName);
+@@ -179,7 +179,7 @@ public RuntimeFixture()
+                 }
+             }
+             Environment.SetEnvironmentVariable(Global.LocalAppData, "0");
+-            _configField.SetValue(ConfigState.Instance, Config);
++            _configField.SetValue(AppManager.Instance, Config);
+         }
+ 
+         public async Task<Config> ReadSavedConfigAsync() =>
+@@ -208,7 +208,7 @@ public void Dispose()
+             }
+             finally
+             {
+-                _configField.SetValue(ConfigState.Instance, _previousConfig);
++                _configField.SetValue(AppManager.Instance, _previousConfig);
+                 Environment.SetEnvironmentVariable(Global.LocalAppData, _previousLocalData);
+             }
+         }

@@ -1,0 +1,1386 @@
+--- b/v2rayN/ServiceLib.Tests/Manager/CoreAdminManagerTests.cs
++++ /dev/null
+@@ -1,134 +0,0 @@
+-namespace ServiceLib.Tests.Manager;
+-
+-public class CoreAdminManagerTests
+-{
+-    [Test]
+-    public async Task CheckLinuxSudoPassword_NullOrEmpty_ShouldReturnFalse()
+-    {
+-        var resultNull = await CoreAdminManager.CheckLinuxSudoPassword(null);
+-        await resultNull.Should().BeFalse();
+-
+-        var resultEmpty = await CoreAdminManager.CheckLinuxSudoPassword(string.Empty);
+-        await resultEmpty.Should().BeFalse();
+-    }
+-
+-    [Test]
+-    public async Task CheckLinuxSudoPassword_OnWindows_ShouldReturnFalseWithoutExecuting()
+-    {
+-        if (Utils.IsWindows())
+-        {
+-            var result = await CoreAdminManager.CheckLinuxSudoPassword("somePassword123");
+-            await result.Should().BeFalse();
+-        }
+-    }
+-
+-    [Test]
+-    public async Task IsCorePrivileged_NullOrNonExistent_ShouldReturnFalse()
+-    {
+-        await CoreAdminManager.IsCorePrivileged(null).Should().BeFalse();
+-        await CoreAdminManager.IsCorePrivileged(string.Empty).Should().BeFalse();
+-        await CoreAdminManager.IsCorePrivileged("non_existent_file_path_12345").Should().BeFalse();
+-    }
+-
+-    [Test]
+-    public async Task IsCorePrivileged_OnWindows_ShouldReturnFalse()
+-    {
+-        if (Utils.IsWindows())
+-        {
+-            var tempFile = Path.GetTempFileName();
+-            try
+-            {
+-                await CoreAdminManager.IsCorePrivileged(tempFile).Should().BeFalse();
+-            }
+-            finally
+-            {
+-                File.Delete(tempFile);
+-            }
+-        }
+-    }
+-
+-    [Test]
+-    public async Task AreAllTunCoresPrivileged_OnWindows_ShouldReturnFalse()
+-    {
+-        if (Utils.IsWindows())
+-        {
+-            await CoreAdminManager.AreAllTunCoresPrivileged().Should().BeFalse();
+-        }
+-    }
+-
+-    [Test]
+-    public async Task IsCorePrivilegedAsync_NullOrNonExistent_ShouldReturnFalse()
+-    {
+-        var r1 = await CoreAdminManager.IsCorePrivilegedAsync(null);
+-        await r1.Should().BeFalse();
+-        var r2 = await CoreAdminManager.IsCorePrivilegedAsync(string.Empty);
+-        await r2.Should().BeFalse();
+-        var r3 = await CoreAdminManager.IsCorePrivilegedAsync("non_existent_file_path_12345");
+-        await r3.Should().BeFalse();
+-    }
+-
+-    [Test]
+-    public async Task IsCorePrivilegedAsync_OnWindows_ShouldReturnFalse()
+-    {
+-        if (Utils.IsWindows())
+-        {
+-            var tempFile = Path.GetTempFileName();
+-            try
+-            {
+-                var result = await CoreAdminManager.IsCorePrivilegedAsync(tempFile);
+-                await result.Should().BeFalse();
+-            }
+-            finally
+-            {
+-                File.Delete(tempFile);
+-            }
+-        }
+-    }
+-
+-    [Test]
+-    public async Task AreAllTunCoresPrivilegedAsync_OnWindows_ShouldReturnFalse()
+-    {
+-        if (Utils.IsWindows())
+-        {
+-            var result = await CoreAdminManager.AreAllTunCoresPrivilegedAsync();
+-            await result.Should().BeFalse();
+-        }
+-    }
+-
+-    [Test]
+-    public async Task GrantAllCoresPrivilege_OnWindows_ShouldReturnFalse()
+-    {
+-        if (Utils.IsWindows())
+-        {
+-            var result = await CoreAdminManager.GrantAllCoresPrivilege("somePassword");
+-            await result.Should().BeFalse();
+-        }
+-    }
+-
+-    [Test]
+-    public async Task RevokeAllCoresPrivilege_OnWindows_ShouldReturnFalse()
+-    {
+-        if (Utils.IsWindows())
+-        {
+-            var result = await CoreAdminManager.RevokeAllCoresPrivilege("somePassword");
+-            await result.Should().BeFalse();
+-        }
+-    }
+-
+-    [Test]
+-    public async Task IsAnyCorePrivilegedAsync_OnWindows_ShouldReturnFalse()
+-    {
+-        if (Utils.IsWindows())
+-        {
+-            var result = await CoreAdminManager.IsAnyCorePrivilegedAsync();
+-            await result.Should().BeFalse();
+-        }
+-    }
+-
+-    [Test]
+-    public async Task GetAllCoreExecFiles_ShouldReturnNonNullList()
+-    {
+-        var files = CoreAdminManager.GetAllCoreExecFiles();
+-        await files.Should().NotBeNull();
+-    }
+-}
+--- b/v2rayN/ServiceLib/Common/FileUtils.cs
++++ a/v2rayN/ServiceLib/Common/FileUtils.cs
+@@ -238,9 +238,6 @@
+     {
+         var shFilePath = Utils.GetBinConfigPath(fileName);
+ 
+-        // Normalize to Unix LF line endings
+-        contents = contents.Replace("\r\n", "\n").Replace("\r", "\n");
+-
+         // Check if the file already exists and if we should overwrite it
+         if (!overwrite && File.Exists(shFilePath))
+         {
+@@ -248,7 +245,7 @@
+         }
+ 
+         File.Delete(shFilePath);
++        await File.WriteAllTextAsync(shFilePath, contents);
+-        await File.WriteAllTextAsync(shFilePath, contents, new UTF8Encoding(false));
+         await Utils.SetLinuxChmod(shFilePath);
+ 
+         return shFilePath;
+--- b/v2rayN/ServiceLib/Handler/SysProxy/ProxySettingLinux.cs
++++ a/v2rayN/ServiceLib/Handler/SysProxy/ProxySettingLinux.cs
+@@ -27,6 +27,6 @@
+         // TODO: temporarily notify which script is being used
+         NoticeManager.Instance.SendMessage(fileName);
+ 
++        await Utils.GetCliWrapOutput(fileName, args);
+-        await Utils.GetCliWrapOutput(Global.LinuxBash, [fileName, .. args]);
+     }
+ }
+--- b/v2rayN/ServiceLib/Manager/CoreAdminManager.cs
++++ a/v2rayN/ServiceLib/Manager/CoreAdminManager.cs
+@@ -1,6 +1,5 @@
+ using CliWrap;
+ using CliWrap.Buffered;
+-using ServiceLib.ViewModels;
+ 
+ namespace ServiceLib.Manager;
+ 
+@@ -13,293 +12,6 @@
+     private int _linuxSudoPid = -1;
+     private const string _tag = "CoreAdminHandler";
+ 
+-    public static async Task<bool> CheckLinuxSudoPassword(string? password)
+-    {
+-        if (password.IsNullOrEmpty() || !Utils.IsLinux())
+-        {
+-            return false;
+-        }
+-
+-        try
+-        {
+-            var inputPwd = password.EndsWith('\n') ? password : password + "\n";
+-            var arg = new List<string>() { "-c", "sudo -S echo SUDO_CHECK" };
+-            var result = await Cli.Wrap(Global.LinuxBash)
+-                .WithArguments(arg)
+-                .WithStandardInputPipe(PipeSource.FromString(inputPwd))
+-                .WithValidation(CommandResultValidation.None)
+-                .ExecuteBufferedAsync();
+-
+-            return result.ExitCode == 0;
+-        }
+-        catch (Exception ex)
+-        {
+-            Logging.SaveLog("CheckSudoPassword", ex);
+-            return false;
+-        }
+-    }
+-
+-    public static bool IsCorePrivileged(string? fileName)
+-    {
+-        if (fileName.IsNullOrEmpty() || !File.Exists(fileName) || !Utils.IsLinux())
+-        {
+-            return false;
+-        }
+-
+-        try
+-        {
+-            var mode = File.GetUnixFileMode(fileName);
+-            return mode.HasFlag(UnixFileMode.SetUser);
+-        }
+-        catch (Exception ex)
+-        {
+-            Logging.SaveLog("IsCorePrivileged", ex);
+-            return false;
+-        }
+-    }
+-
+-    public static async Task<bool> IsCorePrivilegedAsync(string? fileName)
+-    {
+-        if (fileName.IsNullOrEmpty() || !File.Exists(fileName) || !Utils.IsLinux())
+-        {
+-            return false;
+-        }
+-
+-        try
+-        {
+-            var mode = File.GetUnixFileMode(fileName);
+-            if (!mode.HasFlag(UnixFileMode.SetUser))
+-            {
+-                return false;
+-            }
+-
+-            var cmd =
+-                $"[ \"$(stat -c '%u' {fileName.AppendQuotes()} 2>/dev/null || stat -f '%u' {fileName.AppendQuotes()} 2>/dev/null)\" = \"0\" ]";
+-            var result = await Cli.Wrap(Global.LinuxBash)
+-                .WithArguments(["-c", cmd])
+-                .WithValidation(CommandResultValidation.None)
+-                .ExecuteBufferedAsync();
+-
+-            return result.ExitCode == 0;
+-        }
+-        catch (Exception ex)
+-        {
+-            Logging.SaveLog("IsCorePrivilegedAsync", ex);
+-            return false;
+-        }
+-    }
+-
+-    public static List<string> GetAllCoreExecFiles()
+-    {
+-        var list = new List<string>();
+-        foreach (var coreInfo in CoreInfoManager.Instance.GetCoreInfo())
+-        {
+-            if (coreInfo?.CoreExes == null)
+-            {
+-                continue;
+-            }
+-
+-            foreach (var name in coreInfo.CoreExes)
+-            {
+-                var file = coreInfo.AbsolutePath == true
+-                    ? Utils.GetBinPath(Utils.GetExeName(name))
+-                    : Utils.GetBinPath(Utils.GetExeName(name), coreInfo.CoreType.ToString());
+-
+-                if (file.IsNotEmpty() && File.Exists(file) && !list.Contains(file))
+-                {
+-                    list.Add(file);
+-                }
+-            }
+-        }
+-
+-        return list;
+-    }
+-
+-    public static bool AreAllTunCoresPrivileged(string? currentCoreFile = null)
+-    {
+-        if (!Utils.IsLinux())
+-        {
+-            return false;
+-        }
+-
+-        if (currentCoreFile.IsNotEmpty() && !IsCorePrivileged(currentCoreFile))
+-        {
+-            return false;
+-        }
+-
+-        var cores = GetAllCoreExecFiles();
+-        if (cores.Count == 0)
+-        {
+-            return false;
+-        }
+-
+-        return cores.All(IsCorePrivileged);
+-    }
+-
+-    public static async Task<bool> AreAllTunCoresPrivilegedAsync(string? currentCoreFile = null)
+-    {
+-        if (!Utils.IsLinux())
+-        {
+-            return false;
+-        }
+-
+-        if (currentCoreFile.IsNotEmpty() && !await IsCorePrivilegedAsync(currentCoreFile))
+-        {
+-            return false;
+-        }
+-
+-        var cores = GetAllCoreExecFiles();
+-        if (cores.Count == 0)
+-        {
+-            return false;
+-        }
+-
+-        foreach (var core in cores)
+-        {
+-            if (!await IsCorePrivilegedAsync(core))
+-            {
+-                return false;
+-            }
+-        }
+-
+-        return true;
+-    }
+-
+-    public static async Task<bool> GrantAllCoresPrivilege(string password)
+-    {
+-        if (!Utils.IsLinux())
+-        {
+-            return false;
+-        }
+-
+-        var cores = GetAllCoreExecFiles();
+-        if (cores.Count == 0)
+-        {
+-            return true;
+-        }
+-
+-        try
+-        {
+-            var quotedFiles = string.Join(" ", cores.Select(f => f.AppendQuotes()));
+-            var inputPwd = password.EndsWith('\n') ? password : password + "\n";
+-            var cmd = $"sudo -S chown root:root {quotedFiles} && sudo -S chmod u+s {quotedFiles}";
+-
+-            var result = await Cli.Wrap(Global.LinuxBash)
+-                .WithArguments(["-c", cmd])
+-                .WithStandardInputPipe(PipeSource.FromString(inputPwd))
+-                .WithValidation(CommandResultValidation.None)
+-                .ExecuteBufferedAsync();
+-
+-            return result.ExitCode == 0;
+-        }
+-        catch (Exception ex)
+-        {
+-            Logging.SaveLog("GrantAllCoresPrivilege", ex);
+-            return false;
+-        }
+-    }
+-
+-    public static async Task<bool> IsAnyCorePrivilegedAsync()
+-    {
+-        if (!Utils.IsLinux())
+-        {
+-            return false;
+-        }
+-
+-        var cores = GetAllCoreExecFiles();
+-        foreach (var core in cores)
+-        {
+-            if (await IsCorePrivilegedAsync(core))
+-            {
+-                return true;
+-            }
+-        }
+-
+-        return false;
+-    }
+-
+-    public static async Task<bool> RevokeAllCoresPrivilege(string? password = null,
+-        Func<Task<string?>>? passwordPrompt = null)
+-    {
+-        if (!Utils.IsLinux())
+-        {
+-            return false;
+-        }
+-
+-        var cores = GetAllCoreExecFiles();
+-        if (cores.Count == 0)
+-        {
+-            return true;
+-        }
+-
+-        try
+-        {
+-            var quotedFiles = string.Join(" ", cores.Select(f => f.AppendQuotes()));
+-            var revokeScript =
+-                $"sudo -n chmod u-s {quotedFiles} && sudo -n chown $(id -u):$(id -g) {quotedFiles} && sudo -n chmod 0755 {quotedFiles}";
+-
+-            // 1. Try passwordless sudo first (e.g. cached credentials or NOPASSWD)
+-            var noPassResult = await Cli.Wrap(Global.LinuxBash)
+-                .WithArguments(["-c", revokeScript])
+-                .WithValidation(CommandResultValidation.None)
+-                .ExecuteBufferedAsync();
+-
+-            if (noPassResult.ExitCode == 0)
+-            {
+-                return true;
+-            }
+-
+-            // 2. Obtain password: from argument, or LinuxSudoPwd in memory, or prompt callback
+-            var pwd = password;
+-            if (pwd.IsNullOrEmpty())
+-            {
+-                pwd = AppManager.Instance.LinuxSudoPwd;
+-            }
+-
+-            if (pwd.IsNullOrEmpty() && passwordPrompt != null)
+-            {
+-                pwd = await passwordPrompt();
+-            }
+-
+-            if (pwd.IsNullOrEmpty() && StatusBarViewModel.Instance != null)
+-            {
+-                pwd = await StatusBarViewModel.Instance.PasswordInputInteraction.HandleSafe(RxVoid.Default);
+-            }
+-
+-            if (pwd.IsNullOrEmpty())
+-            {
+-                return false;
+-            }
+-
+-            var inputPwd = pwd.EndsWith('\n') ? pwd : pwd + "\n";
+-            var sudoCmd =
+-                $"sudo -S chmod u-s {quotedFiles} && sudo -S chown $(id -u):$(id -g) {quotedFiles} && sudo -S chmod 0755 {quotedFiles}";
+-
+-            var result = await Cli.Wrap(Global.LinuxBash)
+-                .WithArguments(["-c", sudoCmd])
+-                .WithStandardInputPipe(PipeSource.FromString(inputPwd))
+-                .WithValidation(CommandResultValidation.None)
+-                .ExecuteBufferedAsync();
+-
+-            if (result.ExitCode == 0)
+-            {
+-                if (AppManager.Instance.Config?.TunModeItem?.EnableTun == true)
+-                {
+-                    AppManager.Instance.LinuxSudoPwd = pwd;
+-                }
+-
+-                return true;
+-            }
+-
+-            return false;
+-        }
+-        catch (Exception ex)
+-        {
+-            Logging.SaveLog("RevokeAllCoresPrivilege", ex);
+-            return false;
+-        }
+-    }
+-
+     public async Task Init(Config config, Func<bool, string, Task> updateFunc)
+     {
+         if (_config != null)
+@@ -319,127 +31,42 @@
+ 
+     public async Task<ProcessService?> RunProcessAsLinuxSudo(string fileName, CoreInfo coreInfo, string configPath)
+     {
++        StringBuilder sb = new();
++        sb.AppendLine("#!/bin/bash");
++        var cmdLine = $"{fileName.AppendQuotes()} {string.Format(coreInfo.Arguments, Utils.GetBinConfigPath(configPath).AppendQuotes())}";
+-        _config = AppManager.Instance.Config;
+-        var preservePrivileges = _config.TunModeItem?.PreserveCorePrivileges ?? false;
+-
+-        var isPrivileged = await IsCorePrivilegedAsync(fileName);
+ 
++        // Passing environment variables to the sudo command, here it only xray or sing-box.
++        if (coreInfo.Environment.Count > 0)
+-        if (!isPrivileged)
+         {
++            var envArgs = string.Join(" ", coreInfo.Environment.Where(kv => kv.Value.IsNotEmpty()).Select(kv => $"{kv.Key}={kv.Value.AppendQuotes()}"));
++            sb.AppendLine($"exec sudo -S -- env {envArgs} {cmdLine}");
+-            var password = AppManager.Instance.LinuxSudoPwd;
+-            if (password.IsNullOrEmpty())
+-            {
+-                // Core does not have root privileges or lost them, ask user for sudo password
+-                password = await StatusBarViewModel.Instance.PasswordInputInteraction.HandleSafe(RxVoid.Default);
+-                if (password.IsNullOrEmpty())
+-                {
+-                    if (_config?.TunModeItem != null)
+-                    {
+-                        _config.TunModeItem.EnableTun = false;
+-                        await ConfigHandler.SaveConfig(_config);
+-                    }
+-
+-                    StatusBarViewModel.Instance.EnableTun = false;
+-                    throw new Exception(ResUI.SudoIncorrectPasswordTip);
+-                }
+-
+-                preservePrivileges = _config.TunModeItem?.PreserveCorePrivileges ?? false;
+-            }
+-
+-            if (preservePrivileges)
+-            {
+-                var grantSuccess = await GrantAllCoresPrivilege(password);
+-                if (!grantSuccess)
+-                {
+-                    await UpdateFunc(true, ResUI.SudoIncorrectPasswordTip);
+-                    throw new Exception(ResUI.SudoIncorrectPasswordTip);
+-                }
+-
+-                isPrivileged = await IsCorePrivilegedAsync(fileName);
+-            }
+-            else
+-            {
+-                AppManager.Instance.LinuxSudoPwd = password;
+-            }
+         }
++        else
+-
+-        if (isPrivileged)
+         {
++            sb.AppendLine($"exec sudo -S -- {cmdLine}");
++        }
+-            var configArg = coreInfo.AbsolutePath ? Utils.GetBinConfigPath(configPath).AppendQuotes() : configPath;
+-            var environmentVars = new Dictionary<string, string>();
+-            foreach (var kv in coreInfo.Environment)
+-            {
+-                environmentVars[kv.Key] = string.Format(kv.Value, configArg);
+-            }
+-
+-            var procService = new ProcessService(
+-                fileName: fileName,
+-                arguments: string.Format(coreInfo.Arguments, configArg),
+-                workingDirectory: Utils.GetBinConfigPath(),
+-                displayLog: true,
+-                redirectInput: false,
+-                environmentVars: environmentVars,
+-                updateFunc: _updateFunc
+-            );
+ 
++        var shFilePath = await FileUtils.CreateLinuxShellFile("run_as_sudo.sh", sb.ToString(), true);
+-            await procService.StartAsync();
+ 
++        var procService = new ProcessService(
++            fileName: shFilePath,
++            arguments: "",
++            workingDirectory: Utils.GetBinConfigPath(),
++            displayLog: true,
++            redirectInput: true,
++            environmentVars: null,
++            updateFunc: _updateFunc
++        );
+-            if (procService is null or { HasExited: true })
+-            {
+-                throw new Exception(ResUI.FailedToRunCore);
+-            }
+ 
++        await procService.StartAsync(AppManager.Instance.LinuxSudoPwd);
+-            _linuxSudoPid = procService.Id;
+ 
++        if (procService is null or { HasExited: true })
++        {
++            throw new Exception(ResUI.FailedToRunCore);
+-            return procService;
+         }
++        _linuxSudoPid = procService.Id;
+-        else
+-        {
+-            StringBuilder sb = new();
+-            sb.AppendLine("#!/bin/bash");
+-            var cmdLine =
+-                $"{fileName.AppendQuotes()} {string.Format(coreInfo.Arguments, Utils.GetBinConfigPath(configPath).AppendQuotes())}";
+ 
++        return procService;
+-            // Passing environment variables to the sudo command, here it only xray or sing-box.
+-            if (coreInfo.Environment.Count > 0)
+-            {
+-                var envArgs = string.Join(" ",
+-                    coreInfo.Environment.Where(kv => kv.Value.IsNotEmpty())
+-                        .Select(kv => $"{kv.Key}={kv.Value.AppendQuotes()}"));
+-                sb.AppendLine($"exec sudo -S -- env {envArgs} {cmdLine}");
+-            }
+-            else
+-            {
+-                sb.AppendLine($"exec sudo -S -- {cmdLine}");
+-            }
+-            var shFilePath = await FileUtils.CreateLinuxShellFile("run_as_sudo.sh", sb.ToString(), true);
+-
+-            var procService = new ProcessService(
+-                fileName: shFilePath,
+-                arguments: "",
+-                workingDirectory: Utils.GetBinConfigPath(),
+-                displayLog: true,
+-                redirectInput: true,
+-                environmentVars: null,
+-                updateFunc: _updateFunc
+-            );
+-
+-            await procService.StartAsync(AppManager.Instance.LinuxSudoPwd);
+-
+-            if (procService is null or { HasExited: true })
+-            {
+-                if (!preservePrivileges)
+-                {
+-                    AppManager.Instance.LinuxSudoPwd = null;
+-                }
+-
+-                throw new Exception(ResUI.FailedToRunCore);
+-            }
+-
+-            _linuxSudoPid = procService.Id;
+-
+-            return procService;
+-        }
+     }
+ 
+     public async Task KillProcessAsLinuxSudo()
+@@ -451,28 +78,18 @@
+ 
+         try
+         {
++            var shellFileName = Utils.IsMacOS() ? Global.KillAsSudoOSXShellFileName : Global.KillAsSudoLinuxShellFileName;
++            var shFilePath = await FileUtils.CreateLinuxShellFile("kill_as_sudo.sh", EmbedUtils.GetEmbedText(shellFileName), true);
++            if (shFilePath.Contains(' '))
++            {
++                shFilePath = shFilePath.AppendQuotes();
++            }
++            var arg = new List<string>() { "-c", $"sudo -S {shFilePath} {_linuxSudoPid}" };
+-            var shellFileName =
+-                Utils.IsMacOS() ? Global.KillAsSudoOSXShellFileName : Global.KillAsSudoLinuxShellFileName;
+-            var shFilePath =
+-                await FileUtils.CreateLinuxShellFile("kill_as_sudo.sh", EmbedUtils.GetEmbedText(shellFileName), true);
+-
+             var result = await Cli.Wrap(Global.LinuxBash)
++                .WithArguments(arg)
++                .WithStandardInputPipe(PipeSource.FromString(AppManager.Instance.LinuxSudoPwd))
+-                .WithArguments([shFilePath, _linuxSudoPid.ToString()])
+-                .WithValidation(CommandResultValidation.None)
+                 .ExecuteBufferedAsync();
+ 
+-            if (result.ExitCode != 0 && AppManager.Instance.LinuxSudoPwd.IsNotEmpty())
+-            {
+-                var inputPwd = AppManager.Instance.LinuxSudoPwd.EndsWith('\n')
+-                    ? AppManager.Instance.LinuxSudoPwd
+-                    : AppManager.Instance.LinuxSudoPwd + "\n";
+-                result = await Cli.Wrap(Global.LinuxBash)
+-                    .WithArguments(["-c", $"sudo -S {shFilePath.AppendQuotes()} {_linuxSudoPid}"])
+-                    .WithStandardInputPipe(PipeSource.FromString(inputPwd))
+-                    .WithValidation(CommandResultValidation.None)
+-                    .ExecuteBufferedAsync();
+-            }
+-
+             await UpdateFunc(false, result.StandardOutput.ToString());
+ 
+             await Task.Delay(1000); // Wait for a second to ensure the process is killed
+--- b/v2rayN/ServiceLib/Models/Configs/ConfigItems.cs
++++ a/v2rayN/ServiceLib/Models/Configs/ConfigItems.cs
+@@ -151,7 +151,6 @@
+     public List<string>? RouteExcludeAddress { get; set; }
+     public string IPv4Address { get; set; }
+     public string IPv6Address { get; set; }
+-    public bool PreserveCorePrivileges { get; set; }
+ }
+ 
+ [Serializable]
+--- b/v2rayN/ServiceLib/Resx/ResUI.Designer.cs
++++ a/v2rayN/ServiceLib/Resx/ResUI.Designer.cs
+@@ -5417,23 +5417,5 @@
+                 return ResourceManager.GetString("UpgradeAppNotExistTip", resourceCulture);
+             }
+         }
+-        
+-        /// <summary>
+-        ///   查找类似 Preserve core privileges 的本地化字符串。
+-        /// </summary>
+-        public static string TbSettingsLinuxSudoPasswordRemember {
+-            get {
+-                return ResourceManager.GetString("TbSettingsLinuxSudoPasswordRemember", resourceCulture);
+-            }
+-        }
+-
+-        /// <summary>
+-        ///   查找类似 Grant the core binaries root privileges 的本地化字符串。
+-        /// </summary>
+-        public static string TbSettingsPreserveCorePrivilegesTip {
+-            get {
+-                return ResourceManager.GetString("TbSettingsPreserveCorePrivilegesTip", resourceCulture);
+-            }
+-        }
+     }
+ }
+--- b/v2rayN/ServiceLib/Resx/ResUI.az.resx
++++ a/v2rayN/ServiceLib/Resx/ResUI.az.resx
+@@ -1365,12 +1365,6 @@
+   <data name="TbSettingsLinuxSudoPasswordTip" xml:space="preserve">
+     <value>Şifrə əmr sətri vasitəsilə yoxlanılacaq. Doğrulama xətası tətbiqin işini pozarsa, tətbiqi yenidən başladın. Şifrə saxlanılmayacaq və hər yenidən başlatmadan sonra təkrar daxil edilməlidir.</value>
+   </data>
+-  <data name="TbSettingsLinuxSudoPasswordRemember" xml:space="preserve">
+-    <value>Nüvə imtiyazlarını saxla</value>
+-  </data>
+-  <data name="TbSettingsPreserveCorePrivilegesTip" xml:space="preserve">
+-    <value>Nüvə icra fayllarına root imtiyazları verin</value>
+-  </data>
+   <data name="TransportHeaderType5" xml:space="preserve">
+     <value>xhttp rejimi</value>
+   </data>
+--- b/v2rayN/ServiceLib/Resx/ResUI.fa.resx
++++ a/v2rayN/ServiceLib/Resx/ResUI.fa.resx
+@@ -1348,13 +1348,7 @@
+     <value>رمز عبور sudo سیستم</value>
+   </data>
+   <data name="TbSettingsLinuxSudoPasswordTip" xml:space="preserve">
++    <value>The password will be validated via the command line. If a validation error causes the application to malfunction, please restart the application. The password will not be stored and must be entered again after each restart.</value>
+-    <value>رمز عبور از طریق خط فرمان تأیید می شود. اگر خطای اعتبارسنجی باعث اختلال در عملکرد برنامه شد، لطفاً برنامه را مجدداً راه اندازی کنید. رمز عبور ذخیره نخواهد شد و پس از هر بار راه اندازی مجدد باید دوباره وارد شود.</value>
+-  </data>
+-  <data name="TbSettingsLinuxSudoPasswordRemember" xml:space="preserve">
+-    <value>حفظ امتیازات هسته</value>
+-  </data>
+-  <data name="TbSettingsPreserveCorePrivilegesTip" xml:space="preserve">
+-    <value>اعطای امتیازات ریشه به فایل‌های اجرایی هسته</value>
+   </data>
+   <data name="TransportHeaderType5" xml:space="preserve">
+     <value>حالت xhttp</value>
+@@ -1779,4 +1773,4 @@
+   <data name="menuNewUpdate" xml:space="preserve">
+     <value>New Update</value>
+   </data>
++</root>
+\ No newline at end of file
+-</root>
+--- b/v2rayN/ServiceLib/Resx/ResUI.fr.resx
++++ a/v2rayN/ServiceLib/Resx/ResUI.fr.resx
+@@ -1344,12 +1344,6 @@
+   <data name="TbSettingsLinuxSudoPasswordTip" xml:space="preserve">
+     <value>Le mot de passe sera vérifié en ligne de commande. En cas d’échec ou de dysfonctionnement, redémarrez l’application. Il n’est pas stocké et doit être saisi à chaque redémarrage.</value>
+     </data>
+-  <data name="TbSettingsLinuxSudoPasswordRemember" xml:space="preserve">
+-    <value>Conserver les privilèges du noyau</value>
+-  </data>
+-  <data name="TbSettingsPreserveCorePrivilegesTip" xml:space="preserve">
+-    <value>Accorder les privilèges root aux fichiers binaires du noyau</value>
+-  </data>
+   <data name="TransportHeaderType5" xml:space="preserve">
+     <value>Mode XHTTP</value>
+   </data>
+@@ -1773,4 +1767,4 @@
+   <data name="menuNewUpdate" xml:space="preserve">
+     <value>Nouvelle MAJ</value>
+   </data>
++</root>
+\ No newline at end of file
+-</root>
+--- b/v2rayN/ServiceLib/Resx/ResUI.hu.resx
++++ a/v2rayN/ServiceLib/Resx/ResUI.hu.resx
+@@ -1347,12 +1347,6 @@
+   <data name="TbSettingsLinuxSudoPasswordTip" xml:space="preserve">
+     <value>A jelszót a parancssoron keresztül ellenőrizzük. Ha egy érvényesítési hiba miatt az alkalmazás hibásan működik, indítsa újra az alkalmazást. A jelszó nem kerül tárolásra, és minden újraindítás után újra meg kell adni.</value>
+   </data>
+-  <data name="TbSettingsLinuxSudoPasswordRemember" xml:space="preserve">
+-    <value>Mag jogosultságok megőrzése</value>
+-  </data>
+-  <data name="TbSettingsPreserveCorePrivilegesTip" xml:space="preserve">
+-    <value>Root jogosultságok megadása a mag binárisoknak</value>
+-  </data>
+   <data name="TransportHeaderType5" xml:space="preserve">
+     <value>xhttp mód</value>
+   </data>
+@@ -1776,4 +1770,4 @@
+   <data name="menuNewUpdate" xml:space="preserve">
+     <value>New Update</value>
+   </data>
++</root>
+\ No newline at end of file
+-</root>
+--- b/v2rayN/ServiceLib/Resx/ResUI.id.resx
++++ a/v2rayN/ServiceLib/Resx/ResUI.id.resx
+@@ -1347,12 +1347,6 @@
+   <data name="TbSettingsLinuxSudoPasswordTip" xml:space="preserve">
+     <value>Kata sandi akan divalidasi melalui baris perintah. Jika kesalahan validasi menyebabkan aplikasi bermasalah, mulai ulang aplikasi. Kata sandi tidak disimpan dan harus dimasukkan lagi setelah setiap mulai ulang.</value>
+   </data>
+-  <data name="TbSettingsLinuxSudoPasswordRemember" xml:space="preserve">
+-    <value>Pertahankan hak istimewa core</value>
+-  </data>
+-  <data name="TbSettingsPreserveCorePrivilegesTip" xml:space="preserve">
+-    <value>Berikan hak akses root ke biner core</value>
+-  </data>
+   <data name="TransportHeaderType5" xml:space="preserve">
+     <value>Mode xhttp</value>
+   </data>
+@@ -1800,4 +1794,4 @@
+   <data name="TbEnableFinalFragmentTip" xml:space="preserve">
+     <value>Memecah bagian akhir paket menjadi fragmen yang lebih kecil. Hal ini dapat memengaruhi throughput dan latensi.</value>
+   </data>
++</root>
+\ No newline at end of file
+-</root>
+--- b/v2rayN/ServiceLib/Resx/ResUI.resx
++++ a/v2rayN/ServiceLib/Resx/ResUI.resx
+@@ -1368,12 +1368,6 @@
+   <data name="TbSettingsLinuxSudoPasswordTip" xml:space="preserve">
+     <value>The password will be validated via the command line. If a validation error causes the application to malfunction, please restart the application. The password will not be stored and must be entered again after each restart.</value>
+   </data>
+-  <data name="TbSettingsLinuxSudoPasswordRemember" xml:space="preserve">
+-    <value>Preserve core privileges</value>
+-  </data>
+-  <data name="TbSettingsPreserveCorePrivilegesTip" xml:space="preserve">
+-    <value>Grant the core binaries root privileges</value>
+-  </data>
+   <data name="TransportHeaderType5" xml:space="preserve">
+     <value>xhttp mode</value>
+   </data>
+@@ -1911,4 +1905,4 @@
+   <data name="menuAddMasqueServer" xml:space="preserve">
+     <value>Add [MASQUE]</value>
+   </data>
++</root>
+\ No newline at end of file
+-</root>
+--- b/v2rayN/ServiceLib/Resx/ResUI.ru.resx
++++ a/v2rayN/ServiceLib/Resx/ResUI.ru.resx
+@@ -1368,12 +1368,6 @@
+   <data name="TbSettingsLinuxSudoPasswordTip" xml:space="preserve">
+     <value>Пароль sudo будет проверен в терминале. Если из-за ошибки проверки приложение начнёт работать некорректно, перезапустите его. Пароль не сохраняется — его нужно вводить после каждого перезапуска</value>
+   </data>
+-  <data name="TbSettingsLinuxSudoPasswordRemember" xml:space="preserve">
+-    <value>Сохранять привилегии ядра</value>
+-  </data>
+-  <data name="TbSettingsPreserveCorePrivilegesTip" xml:space="preserve">
+-    <value>Предоставить исполняемым файлам ядра права root</value>
+-  </data>
+   <data name="TransportHeaderType5" xml:space="preserve">
+     <value>XHTTP-режим</value>
+   </data>
+@@ -1911,4 +1905,4 @@
+   <data name="menuAddMasqueServer" xml:space="preserve">
+     <value>Добавить сервер [MASQUE]</value>
+   </data>
++</root>
+\ No newline at end of file
+-</root>
+--- b/v2rayN/ServiceLib/Resx/ResUI.zh-Hans.resx
++++ a/v2rayN/ServiceLib/Resx/ResUI.zh-Hans.resx
+@@ -1356,12 +1356,6 @@
+   <data name="TbSettingsLinuxSudoPasswordTip" xml:space="preserve">
+     <value>密码将调用命令行校验，如果因为校验错误导致无法正常运行时，请重启本应用。 密码不会存储，每次重启后都需要再次输入。</value>
+   </data>
+-  <data name="TbSettingsLinuxSudoPasswordRemember" xml:space="preserve">
+-    <value>保留核心权限</value>
+-  </data>
+-  <data name="TbSettingsPreserveCorePrivilegesTip" xml:space="preserve">
+-    <value>赋予核心 root 权限</value>
+-  </data>
+   <data name="TransportHeaderType5" xml:space="preserve">
+     <value>XHTTP 模式</value>
+   </data>
+@@ -1903,4 +1897,4 @@
+   <data name="menuAddMasqueServer" xml:space="preserve">
+     <value>添加 [MASQUE]</value>
+   </data>
++</root>
+\ No newline at end of file
+-</root>
+--- b/v2rayN/ServiceLib/Resx/ResUI.zh-Hant.resx
++++ a/v2rayN/ServiceLib/Resx/ResUI.zh-Hant.resx
+@@ -1365,12 +1365,6 @@
+   <data name="TbSettingsLinuxSudoPasswordTip" xml:space="preserve">
+     <value>密碼將調用命令行校驗，如果因為校驗錯誤導致無法正常運行時，請重啟本應用。密碼不會存儲，每次重啟後都需要再次輸入。</value>
+   </data>
+-  <data name="TbSettingsLinuxSudoPasswordRemember" xml:space="preserve">
+-    <value>保留核心權限</value>
+-  </data>
+-  <data name="TbSettingsPreserveCorePrivilegesTip" xml:space="preserve">
+-    <value>賦予核心 root 權限</value>
+-  </data>
+   <data name="TransportHeaderType5" xml:space="preserve">
+     <value>xhttp 模式</value>
+   </data>
+--- b/v2rayN/ServiceLib/ViewModels/OptionSettingViewModel.cs
++++ a/v2rayN/ServiceLib/ViewModels/OptionSettingViewModel.cs
+@@ -100,7 +100,6 @@
+     [Reactive] public partial string TunRouteExcludeAddress { get; set; }
+     [Reactive] public partial string TunIPv4Address { get; set; }
+     [Reactive] public partial string TunIPv6Address { get; set; }
+-    [Reactive] public partial bool TunPreserveCorePrivileges { get; set; }
+ 
+     #endregion Tun mode
+ 
+@@ -118,7 +117,6 @@
+ 
+     #endregion CoreType
+ 
+-    public Interaction<RxVoid, string?> PasswordInputInteraction { get; } = new();
+     public ReactiveCommand<RxVoid, RxVoid> SaveCmd { get; }
+ 
+     public OptionSettingViewModel()
+@@ -227,7 +225,6 @@
+         TunRouteExcludeAddress = Utils.List2String(_config.TunModeItem.RouteExcludeAddress, true);
+         TunIPv4Address = _config.TunModeItem.IPv4Address;
+         TunIPv6Address = _config.TunModeItem.IPv6Address;
+-        TunPreserveCorePrivileges = _config.TunModeItem.PreserveCorePrivileges;
+ 
+         #endregion Tun mode
+ 
+@@ -402,52 +399,6 @@
+         _config.TunModeItem.IPv4Address = TunIPv4Address;
+         _config.TunModeItem.IPv6Address = TunIPv6Address;
+ 
+-        if (Utils.IsLinux())
+-        {
+-            if (TunPreserveCorePrivileges && (!_config.TunModeItem.PreserveCorePrivileges || !await CoreAdminManager.AreAllTunCoresPrivilegedAsync()))
+-            {
+-                var areAllPrivileged = await CoreAdminManager.AreAllTunCoresPrivilegedAsync();
+-                if (!areAllPrivileged)
+-                {
+-                    var password = await PasswordInputInteraction.HandleSafe(RxVoid.Default);
+-                    if (password.IsNullOrEmpty())
+-                    {
+-                        NoticeManager.Instance.Enqueue(ResUI.OperationFailed);
+-                        TunPreserveCorePrivileges = _config.TunModeItem.PreserveCorePrivileges;
+-                        return;
+-                    }
+-
+-                    var success = await CoreAdminManager.GrantAllCoresPrivilege(password);
+-                    if (!success)
+-                    {
+-                        NoticeManager.Instance.Enqueue(ResUI.SudoIncorrectPasswordTip);
+-                        TunPreserveCorePrivileges = _config.TunModeItem.PreserveCorePrivileges;
+-                        return;
+-                    }
+-
+-                    AppManager.Instance.LinuxSudoPwd = null;
+-                }
+-            }
+-            else if (!TunPreserveCorePrivileges && (_config.TunModeItem.PreserveCorePrivileges || await CoreAdminManager.IsAnyCorePrivilegedAsync()))
+-            {
+-                var success = await CoreAdminManager.RevokeAllCoresPrivilege(passwordPrompt: async () =>
+-                {
+-                    return await PasswordInputInteraction.HandleSafe(RxVoid.Default);
+-                });
+-
+-                if (!success)
+-                {
+-                    NoticeManager.Instance.Enqueue(ResUI.OperationFailed);
+-                    TunPreserveCorePrivileges = _config.TunModeItem.PreserveCorePrivileges;
+-                    return;
+-                }
+-            }
+-        }
+-
+-        var shouldReloadTunCore = Utils.IsLinux() && _config.TunModeItem.EnableTun && (_config.TunModeItem.PreserveCorePrivileges != TunPreserveCorePrivileges);
+-
+-        _config.TunModeItem.PreserveCorePrivileges = TunPreserveCorePrivileges;
+-
+         //coreType
+         await SaveCoreType();
+ 
+@@ -456,11 +407,6 @@
+             await AutoStartupHandler.UpdateTask(_config);
+             AppManager.Instance.Reset();
+ 
+-            if (shouldReloadTunCore)
+-            {
+-                StatusBarViewModel.Instance?.ReloadRequested.Publish();
+-            }
+-
+             NoticeManager.Instance.Enqueue(needReboot ? ResUI.NeedRebootTips : ResUI.OperationSuccess);
+             RequestClose?.Invoke(this, EventArgs.Empty);
+         }
+--- b/v2rayN/ServiceLib/ViewModels/StatusBarViewModel.cs
++++ a/v2rayN/ServiceLib/ViewModels/StatusBarViewModel.cs
+@@ -430,94 +430,35 @@
+ 
+     private async Task DoEnableTun()
+     {
++        if (_config.TunModeItem.EnableTun == EnableTun)
+-        try
+         {
++            return;
++        }
+-            if (_config.TunModeItem.EnableTun == EnableTun)
+-            {
+-                return;
+-            }
+ 
++        _config.TunModeItem.EnableTun = EnableTun;
+-            _config.TunModeItem.EnableTun = EnableTun;
+ 
++        if (EnableTun && AllowEnableTun() == false)
++        {
++            // When running as a non-administrator, reboot to administrator mode
++            if (Utils.IsWindows())
+-            if (EnableTun)
+             {
++                _config.TunModeItem.EnableTun = false;
++                await AppManager.Instance.RebootAsAdmin();
++                return;
+-                if (Utils.IsWindows())
+-                {
+-                    if (AllowEnableTun() == false)
+-                    {
+-                        _config.TunModeItem.EnableTun = EnableTun = false;
+-                        await AppManager.Instance.RebootAsAdmin();
+-                        return;
+-                    }
+-                }
+-                else if (Utils.IsLinux())
+-                {
+-                    var areCoresPrivileged = await CoreAdminManager.AreAllTunCoresPrivilegedAsync();
+-
+-                    if (!areCoresPrivileged && AppManager.Instance.LinuxSudoPwd.IsNullOrEmpty())
+-                    {
+-                        var password = await PasswordInputInteraction.HandleSafe(RxVoid.Default);
+-                        if (password.IsNullOrEmpty())
+-                        {
+-                            _config.TunModeItem.EnableTun = EnableTun = false;
+-                            await ConfigHandler.SaveConfig(_config);
+-                            return;
+-                        }
+-
+-                        if (_config.TunModeItem.PreserveCorePrivileges)
+-                        {
+-                            var grantSuccess = await CoreAdminManager.GrantAllCoresPrivilege(password);
+-                            if (!grantSuccess)
+-                            {
+-                                NoticeManager.Instance.Enqueue(ResUI.SudoIncorrectPasswordTip);
+-                                _config.TunModeItem.EnableTun = EnableTun = false;
+-                                await ConfigHandler.SaveConfig(_config);
+-                                return;
+-                            }
+-                        }
+-                        else
+-                        {
+-                            if (await CoreAdminManager.IsAnyCorePrivilegedAsync())
+-                            {
+-                                await CoreAdminManager.RevokeAllCoresPrivilege(password);
+-                            }
+-                            AppManager.Instance.LinuxSudoPwd = password;
+-                        }
+-                    }
+-                }
+-                else if (Utils.IsMacOS())
+-                {
+-                    if (AppManager.Instance.LinuxSudoPwd.IsNullOrEmpty())
+-                    {
+-                        var password = await PasswordInputInteraction.HandleSafe(RxVoid.Default);
+-                        if (password.IsNullOrEmpty())
+-                        {
+-                            _config.TunModeItem.EnableTun = EnableTun = false;
+-                            await ConfigHandler.SaveConfig(_config);
+-                            return;
+-                        }
+-                        AppManager.Instance.LinuxSudoPwd = password;
+-                    }
+-                }
+             }
+             else
+             {
++                var password = await PasswordInputInteraction.HandleSafe(RxVoid.Default);
++                if (password.IsNullOrEmpty())
+-                if (Utils.IsNonWindows())
+                 {
++                    _config.TunModeItem.EnableTun = false;
++                    return;
+-                    AppManager.Instance.LinuxSudoPwd = null;
+                 }
+             }
++        }
+ 
++        await ConfigHandler.SaveConfig(_config);
++        ReloadRequested.Publish();
+-            await ConfigHandler.SaveConfig(_config);
+-            ReloadRequested.Publish();
+-        }
+-        catch (Exception ex)
+-        {
+-            Logging.SaveLog("StatusBarViewModel", ex);
+-            NoticeManager.Instance.Enqueue(ex.Message);
+-            _config.TunModeItem.EnableTun = EnableTun = false;
+-            await ConfigHandler.SaveConfig(_config);
+-        }
+     }
+ 
+     private bool AllowEnableTun()
+@@ -528,8 +469,7 @@
+         }
+         else if (Utils.IsLinux())
+         {
++            return AppManager.Instance.LinuxSudoPwd.IsNotEmpty();
+-            return CoreAdminManager.AreAllTunCoresPrivileged()
+-                || AppManager.Instance.LinuxSudoPwd.IsNotEmpty();
+         }
+         else if (Utils.IsMacOS())
+         {
+--- b/v2rayN/v2rayN.Desktop/Views/OptionSettingWindow.axaml
++++ a/v2rayN/v2rayN.Desktop/Views/OptionSettingWindow.axaml
+@@ -4,7 +4,6 @@
+     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+     xmlns:dd="clr-namespace:v2rayN.Desktop.DesignData"
+-    xmlns:dialogHost="clr-namespace:DialogHostAvalonia;assembly=DialogHost.Avalonia"
+     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+     xmlns:resx="clr-namespace:ServiceLib.Resx;assembly=ServiceLib"
+     xmlns:vms="clr-namespace:ServiceLib.ViewModels;assembly=ServiceLib"
+@@ -16,11 +15,7 @@
+     ShowInTaskbar="False"
+     WindowStartupLocation="CenterScreen"
+     mc:Ignorable="d">
++    <DockPanel Margin="{StaticResource Margin8}">
+-    <dialogHost:DialogHost
+-        CloseOnClickAway="True"
+-        DisableOpeningAnimation="True"
+-        Identifier="dialogHostOption">
+-        <DockPanel Margin="{StaticResource Margin8}">
+         <StackPanel
+             Margin="{StaticResource Margin4}"
+             HorizontalAlignment="Center"
+@@ -1035,7 +1030,7 @@
+                         Margin="{StaticResource Margin4}"
+                         ColumnDefinitions="Auto,Auto,Auto"
+                         DockPanel.Dock="Top"
++                        RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+-                        RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+ 
+                         <TextBlock
+                             Grid.Row="2"
+@@ -1189,28 +1184,6 @@
+                             Width="200"
+                             Margin="{StaticResource Margin4}"
+                             HorizontalAlignment="Left" />
+-
+-                        <TextBlock
+-                            x:Name="labPreserveCorePrivileges"
+-                            Grid.Row="12"
+-                            Grid.Column="0"
+-                            Margin="{StaticResource Margin4}"
+-                            VerticalAlignment="Center"
+-                            Text="{x:Static resx:ResUI.TbSettingsLinuxSudoPasswordRemember}" />
+-                        <ToggleSwitch
+-                            x:Name="togPreserveCorePrivileges"
+-                            Grid.Row="12"
+-                            Grid.Column="1"
+-                            Margin="{StaticResource Margin4}"
+-                            HorizontalAlignment="Left" />
+-                        <TextBlock
+-                            x:Name="labPreserveCorePrivilegesTip"
+-                            Grid.Row="12"
+-                            Grid.Column="2"
+-                            Margin="{StaticResource Margin4}"
+-                            VerticalAlignment="Center"
+-                            Text="{x:Static resx:ResUI.TbSettingsPreserveCorePrivilegesTip}"
+-                            TextWrapping="Wrap" />
+                     </Grid>
+                 </ScrollViewer>
+             </TabItem>
+@@ -1340,5 +1313,4 @@
+             </TabItem>
+         </TabControl>
+     </DockPanel>
+-    </dialogHost:DialogHost>
+ </Window>
+--- b/v2rayN/v2rayN.Desktop/Views/OptionSettingWindow.axaml.cs
++++ a/v2rayN/v2rayN.Desktop/Views/OptionSettingWindow.axaml.cs
+@@ -1,4 +1,3 @@
+-using DialogHostAvalonia;
+ using v2rayN.Desktop.Base;
+ using v2rayN.Desktop.Common;
+ 
+@@ -138,7 +137,6 @@
+             this.Bind(ViewModel, vm => vm.TunRouteExcludeAddress, v => v.txtRouteExcludeAddress.Text).DisposeWith(disposables);
+             this.Bind(ViewModel, vm => vm.TunIPv4Address, v => v.cmbIpv4Address.SelectedValue).DisposeWith(disposables);
+             this.Bind(ViewModel, vm => vm.TunIPv6Address, v => v.cmbIpv6Address.SelectedValue).DisposeWith(disposables);
+-            this.Bind(ViewModel, vm => vm.TunPreserveCorePrivileges, v => v.togPreserveCorePrivileges.IsChecked).DisposeWith(disposables);
+ 
+             this.Bind(ViewModel, vm => vm.CoreType1, v => v.cmbCoreType1.SelectedValue).DisposeWith(disposables);
+             this.Bind(ViewModel, vm => vm.CoreType2, v => v.cmbCoreType2.SelectedValue).DisposeWith(disposables);
+@@ -151,22 +149,7 @@
+             this.Bind(ViewModel, vm => vm.CoreType14, v => v.cmbCoreType14.SelectedValue).DisposeWith(disposables);
+ 
+             this.BindCommand(ViewModel, vm => vm.SaveCmd, v => v.btnSave).DisposeWith(disposables);
+-
+-            ViewModel.PasswordInputInteraction.RegisterHandler(async interaction =>
+-            {
+-                var result = Dispatcher.UIThread.CheckAccess()
+-                    ? await PasswordInputAsync()
+-                    : await Dispatcher.UIThread.InvokeAsync(() => PasswordInputAsync());
+-                interaction.SetOutput(result);
+-            }).DisposeWith(disposables);
+         });
+-
+-        if (!Utils.IsLinux())
+-        {
+-            labPreserveCorePrivileges.IsVisible = false;
+-            togPreserveCorePrivileges.IsVisible = false;
+-            labPreserveCorePrivilegesTip.IsVisible = false;
+-        }
+     }
+ 
+     private async Task InitSettingFont()
+@@ -248,11 +231,4 @@
+     {
+         btnCancel.Focus();
+     }
+-
+-    private async Task<string?> PasswordInputAsync()
+-    {
+-        var dialog = new SudoPasswordInputView(false, showPreserveOption: false, dialogIdentifier: "dialogHostOption");
+-        var obj = await DialogHost.Show(dialog, "dialogHostOption");
+-        return obj?.ToString();
+-    }
+ }
+--- b/v2rayN/v2rayN.Desktop/Views/StatusBarView.axaml.cs
++++ a/v2rayN/v2rayN.Desktop/Views/StatusBarView.axaml.cs
+@@ -39,9 +39,7 @@
+ 
+             ViewModel.PasswordInputInteraction.RegisterHandler(async interaction =>
+             {
++                var result = await PasswordInputAsync();
+-                var result = Dispatcher.UIThread.CheckAccess()
+-                    ? await PasswordInputAsync()
+-                    : await Dispatcher.UIThread.InvokeAsync(() => PasswordInputAsync());
+                 interaction.SetOutput(result);
+             }).DisposeWith(disposables);
+ 
+@@ -76,22 +74,17 @@
+ 
+     private async Task<string?> PasswordInputAsync()
+     {
++        var dialog = new SudoPasswordInputView();
+-        var showPreserveOption = Utils.IsLinux();
+-        var preserveCorePrivileges = _config.TunModeItem.PreserveCorePrivileges;
+-        var dialog = new SudoPasswordInputView(preserveCorePrivileges, showPreserveOption: showPreserveOption);
+         var obj = await DialogHost.Show(dialog);
+ 
+         var password = obj?.ToString();
+         if (password.IsNullOrEmpty())
+         {
++            togEnableTun.IsChecked = false;
+             return password;
+         }
+ 
++        AppManager.Instance.LinuxSudoPwd = password;
+-        if (showPreserveOption)
+-        {
+-            _config.TunModeItem.PreserveCorePrivileges = dialog.IsPreserveCorePrivileges;
+-            await ConfigHandler.SaveConfig(_config);
+-        }
+         return password;
+     }
+ 
+--- b/v2rayN/v2rayN.Desktop/Views/SudoPasswordInputView.axaml
++++ a/v2rayN/v2rayN.Desktop/Views/SudoPasswordInputView.axaml
+@@ -37,9 +37,9 @@
+             VerticalAlignment="Center"
+             Theme="{DynamicResource CardBorder}">
+ 
++            <Grid ColumnDefinitions="Auto,400" RowDefinitions="Auto,Auto,Auto">
+-            <Grid ColumnDefinitions="Auto,400" RowDefinitions="Auto,Auto,Auto,Auto">
+                 <TextBlock
++                    Grid.Row="1"
+-                    Grid.Row="0"
+                     Grid.Column="0"
+                     Margin="{StaticResource Margin4}"
+                     VerticalAlignment="Center"
+@@ -47,34 +47,17 @@
+ 
+                 <TextBox
+                     x:Name="txtPassword"
++                    Grid.Row="1"
+-                    Grid.Row="0"
+                     Grid.Column="1"
+                     Margin="{StaticResource Margin4}"
+                     Classes="revealPasswordButton"
+-                    PasswordChar="*"
+                     Focusable="True" />
+ 
+-                <CheckBox
+-                    x:Name="chkPreserveCorePrivileges"
+-                    Grid.Row="1"
+-                    Grid.Column="1"
+-                    Margin="{StaticResource Margin4}"
+-                    Content="{x:Static resx:ResUI.TbSettingsLinuxSudoPasswordRemember}" />
+-
+                 <TextBlock
+-                    x:Name="txtPreserveTip"
+                     Grid.Row="2"
+                     Grid.Column="1"
+                     Margin="{StaticResource Margin4}"
+                     VerticalAlignment="Center"
+-                    Text="{x:Static resx:ResUI.TbSettingsPreserveCorePrivilegesTip}"
+-                    TextWrapping="Wrap" />
+-
+-                <TextBlock
+-                    Grid.Row="3"
+-                    Grid.Column="1"
+-                    Margin="{StaticResource Margin4}"
+-                    VerticalAlignment="Center"
+                     Text="{x:Static resx:ResUI.TbSettingsLinuxSudoPasswordTip}"
+                     TextWrapping="Wrap" />
+             </Grid>
+--- b/v2rayN/v2rayN.Desktop/Views/SudoPasswordInputView.axaml.cs
++++ a/v2rayN/v2rayN.Desktop/Views/SudoPasswordInputView.axaml.cs
+@@ -1,25 +1,13 @@
++using CliWrap.Buffered;
+ using DialogHostAvalonia;
+ 
+ namespace v2rayN.Desktop.Views;
+ 
+ public partial class SudoPasswordInputView : UserControl
+ {
++    public SudoPasswordInputView()
+-    private readonly string? _dialogIdentifier;
+-
+-    public bool IsPreserveCorePrivileges => chkPreserveCorePrivileges.IsChecked ?? false;
+-
+-    public SudoPasswordInputView() : this(false)
+-    {
+-    }
+-
+-    public SudoPasswordInputView(bool preserveCorePrivileges, bool showPreserveOption = true, string? dialogIdentifier = null)
+     {
+         InitializeComponent();
+-        _dialogIdentifier = dialogIdentifier;
+-
+-        chkPreserveCorePrivileges.IsChecked = preserveCorePrivileges;
+-        chkPreserveCorePrivileges.IsVisible = showPreserveOption;
+-        txtPreserveTip.IsVisible = showPreserveOption;
+ 
+         Loaded += (s, e) => txtPassword.Focus();
+ 
+@@ -27,7 +15,7 @@
+ 
+         btnCancel.Click += (_, _) =>
+         {
++            DialogHost.Close(null);
+-            DialogHost.Close(_dialogIdentifier);
+         };
+     }
+ 
+@@ -45,12 +33,12 @@
+         try
+         {
+             // Verify if the password is correct
++            if (await CheckSudoPasswordAsync(password))
+-            if (await CoreAdminManager.CheckLinuxSudoPassword(password))
+             {
+                 // Password verification successful, return password and close dialog
+                 await Dispatcher.UIThread.InvokeAsync(() =>
+                 {
++                    DialogHost.Close(null, password);
+-                    DialogHost.Close(_dialogIdentifier, password);
+                 });
+             }
+             else
+@@ -69,4 +57,24 @@
+             btnSave.IsEnabled = true;
+         }
+     }
++
++    private async Task<bool> CheckSudoPasswordAsync(string password)
++    {
++        try
++        {
++            // Use sudo echo command to verify password
++            var arg = new List<string>() { "-c", "sudo -S echo SUDO_CHECK" };
++            var result = await CliWrap.Cli.Wrap(Global.LinuxBash)
++                .WithArguments(arg)
++                .WithStandardInputPipe(CliWrap.PipeSource.FromString(password))
++                .ExecuteBufferedAsync();
++
++            return result.ExitCode == 0;
++        }
++        catch (Exception ex)
++        {
++            Logging.SaveLog("CheckSudoPassword", ex);
++            return false;
++        }
++    }
+ }

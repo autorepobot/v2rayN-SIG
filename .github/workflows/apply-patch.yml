@@ -1,0 +1,87 @@
+name: 🀫 Apply Patches
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply-patches:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout self repo (master)
+        uses: actions/checkout@v7
+        with:
+          ref: master
+          fetch-depth: 0
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Apply patch files from patch/ folder
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if [ ! -d patch ]; then
+            echo "No patch/ directory found, nothing to do."
+            exit 0
+          fi
+
+          shopt -s nullglob
+          PATCH_FILES=(patch/*.patch patch/*.diff)
+          shopt -u nullglob
+
+          if [ ${#PATCH_FILES[@]} -eq 0 ]; then
+            echo "No .patch/.diff files found in patch/, nothing to do."
+            exit 0
+          fi
+
+          IFS=$'\n' PATCH_FILES=($(printf '%s\n' "${PATCH_FILES[@]}" | sort))
+          unset IFS
+
+          APPLIED=()
+          SKIPPED=()
+
+          for pf in "${PATCH_FILES[@]}"; do
+            echo "----"
+            echo "Checking: $pf"
+
+            if git apply --check "$pf" 2>/dev/null; then
+              echo "Applying: $pf"
+              git apply "$pf"
+              APPLIED+=("$pf")
+              continue
+            fi
+
+            if git apply --reverse --check "$pf" 2>/dev/null; then
+              echo "Already applied (matches reverse), skipping: $pf"
+              SKIPPED+=("$pf")
+              continue
+            fi
+
+            echo "Trying with patch command (fuzzy match): $pf"
+            if patch -p1 --dry-run --forward < "$pf" > /dev/null 2>&1; then
+              patch -p1 --forward < "$pf"
+              APPLIED+=("$pf")
+              continue
+            fi
+
+            echo "::error::Failed to apply patch: $pf"
+            echo "This patch does not apply cleanly (not forward-applicable, not already-applied, and patch --dry-run also failed)."
+            exit 1
+          done
+
+          echo "----"
+          echo "Applied: ${#APPLIED[@]} file(s)"
+          printf '  %s\n' "${APPLIED[@]}"
+          echo "Skipped (already applied): ${#SKIPPED[@]} file(s)"
+          printf '  %s\n' "${SKIPPED[@]}"
+
+          git add -A
+          if ! git diff --cached --quiet; then
+            LIST=$(printf '%s, ' "${APPLIED[@]}")
+            git commit -m "apply patches: ${LIST%, }"
+            git push origin master
+          else
+            echo "No changes after applying patches, nothing to commit."
+          fi
