@@ -52,7 +52,6 @@ public static class ConfigDbHandler
             item.MuxEnabled = profileItem.MuxEnabled;
             item.Cert = profileItem.Cert;
             item.CertSha = profileItem.CertSha;
-            item.CertPubKeySha = profileItem.CertPubKeySha;
             item.EchConfigList = profileItem.EchConfigList;
             item.VerifyPeerCertByName = profileItem.VerifyPeerCertByName;
             item.Finalmask = profileItem.Finalmask;
