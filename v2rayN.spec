@@ -4,7 +4,7 @@
 %global __requires_exclude ^liblttng-ust\\.so\\..*$
 
 Name:           v2rayN
-Version:        8.0.0
+Version:        8.0.1
 Release:        1%{?dist}
 Summary:        v2rayN (Avalonia) GUI client for Linux
 License:        GPL-3.0-only
@@ -213,5 +213,5 @@ chmod 0644 %{buildroot}%{_datadir}/applications/v2rayn.desktop
 %{_datadir}/icons/hicolor/256x256/apps/v2rayn.png
 
 %changelog
-* Sat Nov 21 2026 Build Bot <repobot@local> - 8.0.0-1
+* Mon Nov 23 2026 Build Bot <repobot@local> - 8.0.1-1
 - Add riscv64 architecture support and dotnet-sdk-10.0.115-linux-riscv64 source
