@@ -53,6 +53,14 @@ BuildRequires: tar
 BuildRequires: unzip
 BuildRequires: libicu
 
+%if 0%{?rhel} >= 11 || 0%{?fedora} >= 45
+BuildRequires: openssl3-libs
+Requires:      openssl3-libs
+%else
+BuildRequires: openssl-libs
+Requires:      openssl-libs
+%endif
+
 Requires:      cairo, pango, openssl, mesa-libEGL, mesa-libGL
 Requires:      glibc >= 2.39
 Requires:      fontconfig >= 2.15.0
