@@ -1,0 +1,192 @@
+name: 🀫 Manage Workflow and Runner
+
+on:
+  workflow_dispatch:
+    inputs:
+      home_disable:
+        description: "主页区域：禁用普通脚本 (.sh -> .sh.disable)"
+        required: false
+        type: boolean
+        default: false
+
+      home_restore:
+        description: "主页区域：恢复普通脚本 (.sh.disable -> .sh)"
+        required: false
+        type: boolean
+        default: false
+
+      home_delete:
+        description: "主页区域：删除禁用脚本 (.sh.disable)"
+        required: false
+        type: boolean
+        default: false
+
+      runner_disable:
+        description: "Runner区域：禁用普通 workflow (.yml -> .yml.disable)"
+        required: false
+        type: boolean
+        default: false
+
+      runner_restore:
+        description: "Runner区域：恢复普通 workflow (.yml.disable -> .yml)"
+        required: false
+        type: boolean
+        default: false
+
+      runner_delete:
+        description: "Runner区域：删除禁用 workflow (.yml.disable)"
+        required: false
+        type: boolean
+        default: false
+
+
+permissions:
+  contents: write
+
+
+jobs:
+
+  manage:
+    name: Manage Workflow / Runner
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+
+
+      ##################################
+      # Home scripts disable (.sh)
+      ##################################
+
+      - name: Disable home scripts
+        if: inputs.home_disable
+        run: |
+          echo "Disable non-SIG scripts"
+
+          for sig in *-sig.sh; do
+            if [ -f "$sig" ]; then
+              normal="${sig/-sig.sh/.sh}"
+
+              if [ -f "$normal" ]; then
+                echo "Disable $normal"
+                mv "$normal" "$normal.disable"
+              fi
+            fi
+          done
+
+
+      ##################################
+      # Home scripts restore
+      ##################################
+
+      - name: Restore home scripts
+        if: inputs.home_restore
+        run: |
+          echo "Restore scripts"
+
+          for f in *.sh.disable; do
+            if [ -f "$f" ]; then
+              normal="${f%.disable}"
+              sig="${normal/.sh/-sig.sh}"
+
+              if [ -f "$sig" ]; then
+                echo "Restore $normal"
+                mv "$f" "$normal"
+              fi
+            fi
+          done
+
+
+      ##################################
+      # Home scripts delete
+      ##################################
+
+      - name: Delete disabled scripts
+        if: inputs.home_delete
+        run: |
+          echo "Delete disabled scripts"
+
+          rm -f *.sh.disable
+
+
+      ##################################
+      # Runner workflows disable (.yml)
+      ##################################
+
+      - name: Disable runner workflows
+        if: inputs.runner_disable
+        run: |
+          echo "Disable non-SIG workflows"
+
+          cd .github/workflows
+
+          for sig in *-sig.yml; do
+            if [ -f "$sig" ]; then
+              normal="${sig/-sig.yml/.yml}"
+
+              if [ -f "$normal" ]; then
+                echo "Disable $normal"
+                mv "$normal" "$normal.disable"
+              fi
+            fi
+          done
+
+
+      ##################################
+      # Runner workflows restore
+      ##################################
+
+      - name: Restore runner workflows
+        if: inputs.runner_restore
+        run: |
+          echo "Restore workflows"
+
+          cd .github/workflows
+
+          for f in *.yml.disable; do
+            if [ -f "$f" ]; then
+              normal="${f%.disable}"
+              sig="${normal/.yml/-sig.yml}"
+
+              if [ -f "$sig" ]; then
+                echo "Restore $normal"
+                mv "$f" "$normal"
+              fi
+            fi
+          done
+
+
+      ##################################
+      # Runner workflows delete
+      ##################################
+
+      - name: Delete disabled workflows
+        if: inputs.runner_delete
+        run: |
+          echo "Delete disabled workflows"
+
+          cd .github/workflows
+
+          rm -f *.yml.disable
+
+
+      ##################################
+      # Commit changes
+      ##################################
+
+      - name: Commit workflow changes
+        if: inputs.home_disable || inputs.home_restore || inputs.home_delete || inputs.runner_disable || inputs.runner_restore || inputs.runner_delete
+        run: |
+
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git add .
+
+          git commit -m "Manage workflow disable files" || echo "No changes"
+
+          git push

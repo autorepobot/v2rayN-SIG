@@ -1,0 +1,13 @@
+diff --git a/v2rayN/ServiceLib/Models/CoreConfigs/CoreInfo.cs b/v2rayN/ServiceLib/Models/CoreConfigs/CoreInfo.cs
+index 1cb23af03da..87cafbcabf1 100644
+--- a/v2rayN/ServiceLib/Models/CoreConfigs/CoreInfo.cs
++++ b/v2rayN/ServiceLib/Models/CoreConfigs/CoreInfo.cs
+@@ -10,6 +10,8 @@ public class CoreInfo
+     public string? ReleaseApiUrl { get; set; }
+     public string? DownloadUrlWin64 { get; set; }
+     public string? DownloadUrlWinArm64 { get; set; }
++    public string? DownloadUrlWin86 { get; set; }
++    public string? DownloadUrlLinuxPpc64le { get; set; }
+     public string? DownloadUrlLinux64 { get; set; }
+     public string? DownloadUrlLinuxArm64 { get; set; }
+     public string? DownloadUrlLinuxRiscV64 { get; set; }
