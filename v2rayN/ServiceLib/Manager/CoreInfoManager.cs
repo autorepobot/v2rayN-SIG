@@ -54,7 +54,7 @@ public sealed class CoreInfoManager
     {
         var lst = new List<ECoreType>();
 
-        if (RuntimeInformation.ProcessArchitecture != Architecture.X86)
+        if (RuntimeInformation.ProcessArchitecture != Architecture.Arm)
         {
             if (IsCheckUpdateSupported(ECoreType.v2rayN))
             {
@@ -63,8 +63,8 @@ public sealed class CoreInfoManager
 
             if (!(Utils.IsWindows() && Environment.OSVersion.Version.Major < 10))
             {
-                lst.Add(ECoreType.Xray);
-                lst.Add(ECoreType.mihomo);
+                // lst.Add(ECoreType.Xray);
+                // lst.Add(ECoreType.mihomo);
                 lst.Add(ECoreType.sing_box);
             }
         }
@@ -90,6 +90,7 @@ public sealed class CoreInfoManager
         {
             ECoreType.v2rayN => preRelease,
             ECoreType.Xray => preRelease,
+            ECoreType.sing_box => preRelease,
             _ => false,
         };
     }
@@ -111,6 +112,8 @@ public sealed class CoreInfoManager
                     GitInfoRefsUrl = GetGitInfoRefsUrl(ECoreType.v2rayN),
                     DownloadUrlWin64 = urlN + "/download/{0}/v2rayN-windows-64.zip",
                     DownloadUrlWinArm64 = urlN + "/download/{0}/v2rayN-windows-arm64.zip",
+                    DownloadUrlWin86 = urlN + "/download/{0}/v2rayN-windows-86.zip",
+                    DownloadUrlLinuxPpc64le = urlN + "/download/{0}/v2rayN-linux-ppc64le.zip",
                     DownloadUrlLinux64 = urlN + "/download/{0}/v2rayN-linux-64.zip",
                     DownloadUrlLinuxArm64 = urlN + "/download/{0}/v2rayN-linux-arm64.zip",
                     DownloadUrlLinuxRiscV64 = urlN + "/download/{0}/v2rayN-linux-riscv64.zip",
@@ -227,6 +230,8 @@ public sealed class CoreInfoManager
                     GitInfoRefsUrl = GetGitInfoRefsUrl(ECoreType.sing_box),
                     DownloadUrlWin64 = urlSingbox + "/download/{0}/sing-box-{1}-windows-amd64.zip",
                     DownloadUrlWinArm64 = urlSingbox + "/download/{0}/sing-box-{1}-windows-arm64.zip",
+                    DownloadUrlWin86 = urlSingbox + "/download/{0}/sing-box-{1}-windows-386.zip",
+                    DownloadUrlLinuxPpc64le = urlSingbox + "/download/{0}/sing-box-{1}-linux-ppc64le.tar.gz",
                     DownloadUrlLinux64 = urlSingbox + "/download/{0}/sing-box-{1}-linux-amd64.tar.gz",
                     DownloadUrlLinuxArm64 = urlSingbox + "/download/{0}/sing-box-{1}-linux-arm64.tar.gz",
                     DownloadUrlLinuxRiscV64 = urlSingbox + "/download/{0}/sing-box-{1}-linux-riscv64.tar.gz",
